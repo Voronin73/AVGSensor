@@ -162,7 +162,7 @@ def check_time(prev_days: int, time_start: str, time_finish: str, period: int, a
         return None
 
     tStart_func = tStart
-    print(tStart, tFinish)
+    # print(tStart, tFinish)
     return tStart_func, tStart, tFinish
 
 
