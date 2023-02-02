@@ -1,0 +1,64 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="E303" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N806" />
+          <option value="N802" />
+          <option value="N801" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="range.*" />
+          <option value="str.write" />
+          <option value="UDP.Settings.*" />
+          <option value="fs.smbfs" />
+          <option value="list.*" />
+          <option value="emit" />
+          <option value="connect" />
+          <option value="gui_presentations.move.b_move" />
+          <option value="gui_presentations.move.x_korr" />
+          <option value="gui_presentations.move.y_korr" />
+          <option value="gui_presentations.move.lastPoint" />
+          <option value="functions.move.b_move" />
+          <option value="functions.move.x_korr" />
+          <option value="functions.move.y_korr" />
+          <option value="functions.move.lastPoint" />
+          <option value="gui_start_theading.move.b_move" />
+          <option value="gui_start_theading.move.x_korr" />
+          <option value="gui_start_theading.move.y_korr" />
+          <option value="gui_start_theading.move.lastPoint" />
+          <option value="gui_start_theading_2.move.b_move" />
+          <option value="gui_start_theading_2.move.lastPoint" />
+          <option value="gui_start_theading_2.move.x_korr" />
+          <option value="gui_start_theading_2.move.y_korr" />
+          <option value="show_time.move.b_move" />
+          <option value="show_time.move.x_korr" />
+          <option value="show_time.move.lastPoint" />
+          <option value="show_time.move.y_korr" />
+          <option value="PyQt5.QtCore.Qt.WA_TranslucentBackground" />
+          <option value="PyQt5.QtCore.Qt.FramelessWindowHint" />
+          <option value="PyQt5.QtCore.Qt.WindowStaysOnTopHint" />
+          <option value="PyQt5.QtCore.QAbstractAnimation.DeleteWhenStopped" />
+          <option value="PyQt5.QtWidgets.QStyle.SP_ComputerIcon" />
+          <option value="PyQt5.QtCore.Qt.Tool" />
+          <option value="Presentations.move.b_move" />
+          <option value="Presentations.move.x_korr" />
+          <option value="Presentations.move.lastPoint" />
+          <option value="Presentations.move.y_korr" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
