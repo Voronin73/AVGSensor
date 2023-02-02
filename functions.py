@@ -7,6 +7,7 @@ from connection import ConnectionManager
 from log_files import info
 from constants import start_dir
 from argparse import ArgumentParser
+from sys import argv
 
 
 def arguments():
@@ -36,7 +37,7 @@ def arguments():
         metavar=': дата и время окончания осреднения'
     )
     parser_group.add_argument(
-        '-p', '--period', type=float, default=1440,
+        '-p', '--period', type=int, default=1440,
         help='Используется если отсутствует параметер "Время начала остреднения". '
              'Период осреднения данных (время окончания осреднения данных - период осреднения данных = '
              'время начала осреднения данных), в минутах (по умолчанию 1440 минут (сутки)).',
@@ -59,10 +60,11 @@ def arguments():
         metavar=': таймаут'
     )
 
-    namespace = parser.parse_args(sys.argv[1:])
+    namespace = parser.parse_args(argv[1:])
 
     return namespace.start_time, namespace.finish_time, namespace.period,\
         namespace.avg_time, namespace.col_string, namespace.timeout
+
 
 def get_avg_direction(speeds, directions):  # Осреднение без учета направления
     sinSum = 0
@@ -90,7 +92,7 @@ def get_avg_direction_vector(speeds, directions):   # Осреднение с у
     return avg_direction, avg_speed
 
 
-def time_format(date_time, formate='%y-%m-%D %H:%M%S'):
+def time_format(date_time, formate='%y-%m-%d %H:%M:%S'):
     try:
         datetime.strptime(date_time, formate)
         return 'ok'
@@ -98,25 +100,26 @@ def time_format(date_time, formate='%y-%m-%D %H:%M%S'):
         return 'error'
 
 
-def check_time(time_start, time_finish, period, avg_time):
-    formate = '%y-%m-%D %H:%M%S'
+def check_time(time_start: str, time_finish: str, period: int, avg_time: int):
+
+    formate = '%y-%m-%d %H:%M:%S'
     tNow = datetime.utcnow()
     if time_start:
         if time_format(time_start, formate) == 'ok':
             tStart = datetime.strptime(time_start, formate)
         else:
-            info(f'Не верный формат времяни начала "{time_start}".', start_dir)
+            info(f'Не верный формат времени начала "{time_start}".', start_dir)
             return None
         if time_finish:
             if time_format(time_start, formate) == 'ok':
-                tStart = datetime.strptime(time_finish, formate)
+                tFinish = datetime.strptime(time_finish, formate)
             else:
-                info(f'Не верный формат времяни окончания "{time_finish}".', start_dir)
+                info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
                 return None
-            time_format(time_finish, formate)
-            tFinish = datetime.strptime(time_finish, formate)
+            # time_format(time_finish, formate)
+            # tFinish = datetime.strptime(time_finish, formate)
             if tFinish - timedelta(minutes=avg_time) < tStart:
-                info(f'Не верно заданo воемя начала "{time_start}" или время окончания "{time_finish}" '
+                info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
                      f'или время осреднения данных "{avg_time}".', start_dir)
                 return None
         else:
@@ -147,64 +150,20 @@ def check_time(time_start, time_finish, period, avg_time):
             return None
 
     tStart_func = tStart
-    print(tStart, tFinish)
+    # print(tStart, tFinish)
     return tStart_func, tStart, tFinish
 
 
 def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_string=3000, timeout=60):
 
-    tStart_func, tStart, tFinish = check_time(
+    times = check_time(
         time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time
     )
-    # formate = '%y-%m-%D %H:%M%S'
-    # tNow = datetime.utcnow()
-    # if time_start:
-    #     if time_format(time_start, formate) == 'ok':
-    #         tStart = datetime.strptime(time_start, formate)
-    #     else:
-    #         info(f'Не верный формат времяни начала "{time_start}".', start_dir)
-    #         return None
-    #     if time_finish:
-    #         if time_format(time_start, formate) == 'ok':
-    #             tStart = datetime.strptime(time_finish, formate)
-    #         else:
-    #             info(f'Не верный формат времяни окончания "{time_finish}".', start_dir)
-    #             return None
-    #         time_format(time_finish, formate)
-    #         tFinish = datetime.strptime(time_finish, formate)
-    #         if tFinish - timedelta(minutes=avg_time) < tStart:
-    #             info(f'Не верно заданo воемя начала "{time_start}" или время окончания "{time_finish}" '
-    #                  f'или время осреднения данных "{avg_time}".', start_dir)
-    #             return None
-    #     else:
-    #         tFinish = tNow.replace(second=0, microsecond=0)
-    # else:
-    #     if period < avg_time:
-    #         info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
-    #              f' Врямя осредения должно быть меньше периода.', start_dir)
-    #         return None
-    #
-    #     elif avg_time > 1440*2:
-    #         info(f'Не верно задано время осреднения данных "{avg_time}".'
-    #              f' Врямя осредения должно быть меньше 2880 минут (48 часов)ю', start_dir)
-    #         return None
-    #
-    #     # tNow = datetime.utcnow()
-    #     if not time_finish:
-    #         tFinish = tNow - timedelta(minutes=avg_time) + (datetime.min - tNow) % timedelta(minutes=avg_time)
-    #         tStart = tFinish - timedelta(minutes=period)
-    #
-    #     else:
-    #         tFinish = datetime.strptime(time_finish, '%Y-%m-%d %H:%M:%S')
-    #         tStart = tFinish - timedelta(minutes=period)
-    #
-    #     if tFinish - timedelta(minutes=avg_time) < tStart:
-    #         info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
-    #              f' Врямя осредения должно быть меньше периода.', start_dir)
-    #         return None
-    #
-    # tStart_func = tStart
-    # print(tStart, tFinish)
+    if not times:
+        return
+    tStart_func, tStart, tFinish = times
+    tNow = tStart
+
     poligon_db = ConnectionManager(
         ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
         user=DB_POLIGON_USER, password=DB_POLIGON_PASSWD, timeout=timeout

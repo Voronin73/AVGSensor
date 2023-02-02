@@ -16,12 +16,12 @@ if __name__ == '__main__':
        количество строк (не обязательный параметр по умолчанию 3000, чем больше интервал тем больше количестао строк)"""
 
     start_time, finish_time, period, avg_time, col_string, timeout = arguments()
-
+    print(start_time, finish_time, period, avg_time, col_string, timeout)
+    # Раскоментировать и ввести необходимые параметры
     #
-    #
-    # start_time = ''                        # Формат 'YY-MM-DD HH:mm:SS'
+    # start_time = '23-02-01 00:00:00'                        # Формат 'YY-MM-DD HH:mm:SS'
     # finish_time = '23-01-31 00:00:00'    # Формат 'YY-MM-DD HH:mm:SS'
-    # period = 60*24
+    period = 1
     # avg_time = 60
 
     result = sql_request(
