@@ -15,17 +15,18 @@ if __name__ == '__main__':
        время осреднения в минутах (по умолчанию 1 минутаб не должно превышать 48 часов),
        количество строк (не обязательный параметр по умолчанию 3000, чем больше интервал тем больше количестао строк)"""
 
-    start_time, finish_time, period, avg_time, col_string, timeout = arguments()
-    print(start_time, finish_time, period, avg_time, col_string, timeout)
+    prev_days, start_time, finish_time, period, avg_time, col_string, timeout = arguments()
+    print(prev_days, start_time, finish_time, period, avg_time, col_string, timeout)
     # Раскоментировать и ввести необходимые параметры
     #
-    # start_time = '23-02-01 00:00:00'                        # Формат 'YY-MM-DD HH:mm:SS'
-    # finish_time = '23-01-31 00:00:00'    # Формат 'YY-MM-DD HH:mm:SS'
-    period = 1
-    # avg_time = 60
+    # start_time = '23-02-01 00:00:00'                        # Формат 'YY-MM-DD HH:mm'
+    # finish_time = '23-01-31 00:00:00'    # Формат 'YY-MM-DD HH:mm'
+    # period = 60*24
+    avg_time = 60*24
+    prev_days = 2
 
     result = sql_request(
-        time_start=start_time, time_finish=finish_time, period=period,
+        prev_days=prev_days, time_start=start_time, time_finish=finish_time, period=period,
         avg_time=avg_time, col_string=3000000, timeout=60
     )
     if result:

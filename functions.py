@@ -22,17 +22,24 @@ def arguments():
 
     parser_group = parser.add_argument_group(title='Парамерты')
     parser_group.add_argument('--help', '-h', action='help', help='Справка')
-
+    parser_group.add_argument(
+        '-d', '--prev_day', type=int, default=0,
+        help='Выполняется осреднение за количество предыдущих суток, '
+             'указаное в переменной, с 00:00 по 00:00, не используются критерии периода осреднения. '
+             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
+             'По умолчанию занчение "0".',
+        metavar=': количество суток'
+    )
     parser_group.add_argument(
         '-s', '--start_time', type=str, default='',
-        help='Время начала осреднения данных в формате "YY-MM-DD HH:mm:SS". '
+        help='Время начала осреднения данных в формате "YY-MM-DD HH:mm". '
              'Не обязательный параметер.',
         metavar=': дата и время начала осреднения'
     )
 
     parser_group.add_argument(
         '-f', '--finish_time', type=str, default='',
-        help='Время окончания осреднения данных в формате "YY-MM-DD HH:mm:SS". '
+        help='Время окончания осреднения данных в формате "YY-MM-DD HH:mm". '
              'Если параметер не введен используется текущее время.',
         metavar=': дата и время окончания осреднения'
     )
@@ -62,7 +69,7 @@ def arguments():
 
     namespace = parser.parse_args(argv[1:])
 
-    return namespace.start_time, namespace.finish_time, namespace.period,\
+    return namespace.prev_day, namespace.start_time, namespace.finish_time, namespace.period,\
         namespace.avg_time, namespace.col_string, namespace.timeout
 
 
@@ -100,69 +107,75 @@ def time_format(date_time, formate='%y-%m-%d %H:%M:%S'):
         return 'error'
 
 
-def check_time(time_start: str, time_finish: str, period: int, avg_time: int):
+def check_time(prev_days: int, time_start: str, time_finish: str, period: int, avg_time: int):
 
-    formate = '%y-%m-%d %H:%M:%S'
     tNow = datetime.utcnow()
-    if time_start:
-        if time_format(time_start, formate) == 'ok':
-            tStart = datetime.strptime(time_start, formate)
-        else:
-            info(f'Не верный формат времени начала "{time_start}".', start_dir)
-            return None
-        if time_finish:
+    if prev_days == 0:
+        formate = '%y-%m-%d %H:%M'
+
+        if time_start:
             if time_format(time_start, formate) == 'ok':
-                tFinish = datetime.strptime(time_finish, formate)
+                tStart = datetime.strptime(time_start, formate)
             else:
-                info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
+                info(f'Не верный формат времени начала "{time_start}".', start_dir)
                 return None
-            # time_format(time_finish, formate)
-            # tFinish = datetime.strptime(time_finish, formate)
-            if tFinish - timedelta(minutes=avg_time) < tStart:
-                info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
-                     f'или время осреднения данных "{avg_time}".', start_dir)
-                return None
+            if time_finish:
+                if time_format(time_start, formate) == 'ok':
+                    tFinish = datetime.strptime(time_finish, formate)
+                else:
+                    info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
+                    return None
+
+                if tFinish - timedelta(minutes=avg_time) < tStart:
+                    info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
+                         f'или время осреднения данных "{avg_time}".', start_dir)
+                    return None
+            else:
+                tFinish = tNow.replace(second=0, microsecond=0)
         else:
-            tFinish = tNow.replace(second=0, microsecond=0)
+            if period < avg_time:
+                info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
+                     f' Врямя осредения должно быть меньше периода.', start_dir)
+                return None
+
+            elif avg_time > 1440 * 2:
+                info(f'Не верно задано время осреднения данных "{avg_time}".'
+                     f' Врямя осредения должно быть меньше 2880 минут (48 часов)ю', start_dir)
+                return None
+
+            # tNow = datetime.utcnow()
+            if not time_finish:
+                tFinish = tNow - timedelta(minutes=avg_time) + (datetime.min - tNow) % timedelta(minutes=avg_time)
+                tStart = tFinish - timedelta(minutes=period)
+
+            else:
+                tFinish = datetime.strptime(time_finish, '%Y-%m-%d %H:%M')
+                tStart = tFinish - timedelta(minutes=period)
+
     else:
-        if period < avg_time:
-            info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
-                 f' Врямя осредения должно быть меньше периода.', start_dir)
-            return None
+        tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+        tStart = tFinish - timedelta(days=prev_days)
 
-        elif avg_time > 1440 * 2:
-            info(f'Не верно задано время осреднения данных "{avg_time}".'
-                 f' Врямя осредения должно быть меньше 2880 минут (48 часов)ю', start_dir)
-            return None
-
-        # tNow = datetime.utcnow()
-        if not time_finish:
-            tFinish = tNow - timedelta(minutes=avg_time) + (datetime.min - tNow) % timedelta(minutes=avg_time)
-            tStart = tFinish - timedelta(minutes=period)
-
-        else:
-            tFinish = datetime.strptime(time_finish, '%Y-%m-%d %H:%M:%S')
-            tStart = tFinish - timedelta(minutes=period)
-
-        if tFinish - timedelta(minutes=avg_time) < tStart:
-            info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
-                 f' Врямя осредения должно быть меньше периода.', start_dir)
-            return None
+    if tFinish - timedelta(minutes=avg_time) < tStart:
+        info(f'Не верно задан период "{period} мин." или время осреднения данных "{avg_time} мин.".'
+             f' Врямя осредения должно быть меньше периода осреднения данных.', start_dir)
+        return None
 
     tStart_func = tStart
-    # print(tStart, tFinish)
+    print(tStart, tFinish)
     return tStart_func, tStart, tFinish
 
 
-def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_string=3000, timeout=60):
+def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_string=3000, timeout=60, prev_days=0):
 
+    tNow = datetime.utcnow()
     times = check_time(
-        time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time
+        time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time, prev_days=prev_days
     )
     if not times:
         return
     tStart_func, tStart, tFinish = times
-    tNow = tStart
+
 
     poligon_db = ConnectionManager(
         ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
