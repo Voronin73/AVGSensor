@@ -176,7 +176,6 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
         return
     tStart_func, tStart, tFinish = times
 
-
     poligon_db = ConnectionManager(
         ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
         user=DB_POLIGON_USER, password=DB_POLIGON_PASSWD, timeout=timeout
