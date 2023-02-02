@@ -54,40 +54,51 @@ def arguments():
     не несет никакой ответственности ни за что.''',
         add_help=False
     )
+
     parser_group = parser.add_argument_group(title='Парамерты')
     parser_group.add_argument('--help', '-h', action='help', help='Справка')
+
+    parser_group.add_argument(
+        '-s', '--start_time', type=str, default='',
+        help='Время начала осреднения данных в формате "YY-MM-DD HH:mm:SS". '
+             'Не обязательный параметер.',
+        metavar=': дата и время начала осреднения'
+    )
+
     parser_group.add_argument(
         '-f', '--finish_time', type=str, default='',
-        help='Время окончания осреднения данных в формате "YYYY-MM-DD HH:mm:SS". '
+        help='Время окончания осреднения данных в формате "YY-MM-DD HH:mm:SS". '
              'Если параметер не введен используется текущее время.',
-        metavar='Дата окончания'
+        metavar=': дата и время окончания осреднения'
     )
     parser_group.add_argument(
         '-p', '--period', type=float, default=1440,
-        help='Период осреднения данных (время окончания осреднения данных - период осреднения данных = '
+        help='Используется если отсутствует параметер "Время начала остреднения". '
+             'Период осреднения данных (время окончания осреднения данных - период осреднения данных = '
              'время начала осреднения данных), в минутах (по умолчанию 1440 минут (сутки)).',
-        metavar='Период осреднения'
+        metavar=': период осреднения'
     )
     parser_group.add_argument(
         '-a', '--avg_time', type=int, default=1,
         help='Время осреднения данных в минутах (по умолчанию 1 минута).',
-        metavar='Время осреднения'
+        metavar=': время осреднения'
     )
     parser_group.add_argument(
         '-c', '--col_string', type=int, default=30000,
         help='Максимальное количество строк получаемых от базы данных '
         '(чем больще период тем больше строк, по умолчанию 30000)',
-        metavar='Количество получаемых строк'
+        metavar=': количество получаемых строк'
     )
     parser_group.add_argument(
-        '-t', '--timeout', type=float, default=60,
-        help='Таймаут подключения и получения данных от базы данных в секундах (по умолчанию 60 секунд)',
-        metavar='Таймаут'
+        '-t', '--timeout', type=int, default=60,
+        help='Таймаут подключения и получения данных от базы данных в секундах (по умолчанию 60 секунд).',
+        metavar=': таймаут'
     )
 
     namespace = parser.parse_args(sys.argv[1:])
 
-    return namespace.finish_time, namespace.period, namespace.avg_time, namespace.col_string, namespace.timeout
+    return namespace.start_time, namespace.finish_time, namespace.period,\
+        namespace.avg_time, namespace.col_string, namespace.timeout
 
 
 print(arguments())
