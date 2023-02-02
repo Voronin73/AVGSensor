@@ -209,7 +209,7 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
                     measurand_winds[n].append(str(poligon_db.result[0][0]))
             n += 1
 
-        while tStart < tFinish:
+        while tStart <= tFinish - timedelta(minutes=avg_time):
             time_beginning = tStart.strftime('%Y-%m-%d %H:%M:%S')
             time_end = (tStart + timedelta(minutes=avg_time)).strftime('%Y-%m-%d %H:%M:%S')
             table_section = (tStart + timedelta(minutes=avg_time)).strftime('%Y_%m_%d')
