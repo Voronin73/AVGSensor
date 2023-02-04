@@ -81,7 +81,7 @@ def get_avg_direction(speeds, directions):  # Осреднение без уче
         speed += value2
     avg_direction = round((math.degrees(math.atan2(sinSum, cosSum)) + 360) % 360, znk)
     avg_speed = round(speed/len(speeds), znk)
-    return avg_direction, avg_speed
+    return avg_speed, avg_direction
 
 
 def get_avg_direction_vector(speeds, directions):   # Осреднение с учетом скорости
@@ -94,7 +94,7 @@ def get_avg_direction_vector(speeds, directions):   # Осреднение с у
     cosSum = cosSum / len(directions)
     avg_direction = round((math.degrees(math.atan2(sinSum, cosSum)) + 360) % 360, znk)
     avg_speed = round(math.sqrt(cosSum**2 + sinSum**2), znk)
-    return avg_direction, avg_speed
+    return avg_speed, avg_direction
 
 
 def time_format(date_time, formate='%y-%m-%d %H:%M:%S'):
@@ -164,6 +164,18 @@ def check_time(prev_days: int, time_start: str, time_finish: str, period: int, a
     return tStart_func, tStart, tFinish
 
 
+def values_out(values, source_id, measurand_id, method_processing, time_obs, value_floats):
+    for parameter, value in zip(method_processing, value_floats):
+        if values:
+            values += ', '
+        time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
+        values += sql_value_pattern.format(
+            SOURCE_ID=source_id, MEASURAND_ID=measurand_id, METHOD_PROCESSING=parameter,
+            TIME_OBS=time_obs, TIME_REC=time_rec, VALUE=value
+        )
+    return values
+
+
 def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_string=3000, timeout=60, prev_days=0):
 
     tNow = datetime.utcnow()
@@ -178,8 +190,16 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
         ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
         user=DB_POLIGON_USER, password=DB_POLIGON_PASSWD, timeout=timeout
     )
-
     try:
+        poligon_db.requests(
+            parameter='method_processing, id', tabel=f'{scheme_info}.{table_measurand_processing}',
+            condition='',
+            x=20
+        )
+        measurand_processing = {}
+        for key in poligon_db.result:
+            measurand_processing[key[0]] = key[1]
+
         condition_measurand_wind = ''
         for label in measurand_winds_label:
             if label:
@@ -213,78 +233,129 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
                 parameter=sql_parameter_no_wind, tabel=table_request_sensor,
                 condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
                                                        TIME_END=time_end, MEASURAND=condition_no_measurand),
-                x=col_string
+                group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
-            # print(len(poligon_db.result))
+            # print(poligon_db.result)
             sens = {}
             values = ''
             if poligon_db.result:
-                # Формирование словаря по ключам source_id с словарями по ключам measurand_id
+                method_processing = [
+                    measurand_processing[mesurand_label_method_processing_min],
+                    measurand_processing[mesurand_label_method_processing_max],
+                    measurand_processing[mesurand_label_method_processing_avg]
+                ]
                 for x in poligon_db.result:
-                    # print(x)
+                    values = values_out(
+                        values=values, source_id=x[0], measurand_id=x[2], method_processing=method_processing,
+                        time_obs=time_end, value_floats=[x[3], x[4], x[5]]
+                    )
+                    # Формирование словаря по ключам source_id с словарями по ключам label_measurand
                     if x[0] in sens:
-                        sens[x[0]][x[1]] = [x[2], x[3], x[4]]
+                        sens[x[0]][x[1]] = [x[2], [x[3], x[4], x[5]]]
                     else:
-                        sens[x[0]] = {x[1]: [x[2], x[3], x[4]]}
+                        sens[x[0]] = {x[1]: [x[2], [x[3], x[4], x[5]]]}
 
+            # print(values)
             poligon_db.requests(
                 parameter=sql_parameter_wind, tabel=table_request_sensor,
                 condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
                                                        TIME_END=time_end,
                                                        MEASURAND=condition_measurand_wind),
-                x=col_string
+                group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
             # print(poligon_db.result)
             if poligon_db.result:
+                method_processing_speed = [
+                    measurand_processing[mesurand_label_method_processing_min],
+                    measurand_processing[mesurand_label_method_processing_max],
+                    measurand_processing[mesurand_label_method_processing_avg]
+                ]
+                method_processing_direction = [
+                    measurand_processing[mesurand_label_method_processing_avg]
+                ]
                 sens_wind = {}
                 for x in poligon_db.result:
                     if x[0] in sens_wind:
-                        sens_wind[x[0]][x[1]] = x[2]
+                        sens_wind[x[0]][x[1]] = [x[2], x[3]]
                     else:
-                        sens_wind[x[0]] = {x[1]: x[2]}
+                        sens_wind[x[0]] = {x[1]: [x[2], x[3]]}
                 # print(sens_wind)
             #
                 for sensor_id in sens_wind.keys():
                     for wind in measurand_winds_label:    # Если ветер то обрабатываем его
-                        if wind[0] in list(sens_wind[sensor_id].keys()) and\
-                                wind[1] in list(sens_wind[sensor_id].keys()):
-                            avg_wind = get_avg_direction(sens_wind[sensor_id][wind[0]], sens_wind[sensor_id][wind[1]])
-                            avg_wind_vector = get_avg_direction_vector(
-                                sens_wind[sensor_id][wind[0]], sens_wind[sensor_id][wind[1]]
+
+                        max_value = ''
+                        min_value = ''
+                        avg_wind_vector_speed = ''
+                        avg_wind_vector_direction = ''
+                        avg_wind_speed = ''
+                        avg_wind_direction = ''
+
+                        if set(wind).issubset(sens_wind[sensor_id].keys()):
+
+                            method_processing_speed = [
+                                measurand_processing[mesurand_label_method_processing_min],
+                                measurand_processing[mesurand_label_method_processing_max],
+                                measurand_processing[mesurand_label_method_processing_avg]
+                            ]
+                            method_processing_direction = [
+                                measurand_processing[mesurand_label_method_processing_avg]
+                            ]
+
+                            avg_wind_speed, avg_wind_direction = get_avg_direction(
+                                sens_wind[sensor_id][wind[0]][1], sens_wind[sensor_id][wind[1]][1]
+                            )
+                            avg_wind_vector_speed, avg_wind_vector_direction = get_avg_direction_vector(
+                                sens_wind[sensor_id][wind[0]][1], sens_wind[sensor_id][wind[1]][1]
                             )
 
-                            max_value = round(max(sens_wind[sensor_id][wind[0]]), znk)
-                            min_value = round(min(sens_wind[sensor_id][wind[0]]), znk)
-                            print(time_end, sensor_id, avg_wind, avg_wind_vector, max_value, min_value)
+                            max_value = round(max(sens_wind[sensor_id][wind[0]][1]), znk)
+                            min_value = round(min(sens_wind[sensor_id][wind[0]][1]), znk)
+                            print(time_end, sensor_id, avg_wind_speed,  avg_wind_direction, avg_wind_vector_speed,
+                                  avg_wind_vector_direction, max_value, min_value)
 
                             # del sens[sensor_id][wind[0]]
                             # del sens[sensor_id][wind[1]]
 
                         elif wind[0] in list(sens_wind[sensor_id].keys()):
-                            avg_value = round(
-                                sum(sens_wind[sensor_id][wind[0]])/len(sens_wind[sensor_id][wind[0]]), znk
+                            method_processing_speed = [
+                                measurand_processing[mesurand_label_method_processing_min],
+                                measurand_processing[mesurand_label_method_processing_max],
+                                measurand_processing[mesurand_label_method_processing_avg]
+                            ]
+
+                            avg_wind_speed = round(
+                                sum(sens_wind[sensor_id][wind[0]][1])/len(sens_wind[sensor_id][wind[0]][1]), znk
                             )
-                            max_value = round(max(sens_wind[sensor_id][wind[0]]), znk)
-                            min_value = round(min(sens_wind[sensor_id][wind[0]]), znk)
-                            print(time_end, sensor_id, avg_value, max_value, min_value)
+                            max_value = round(max(sens_wind[sensor_id][wind[0]][1]), znk)
+                            min_value = round(min(sens_wind[sensor_id][wind[0]][1]), znk)
+                            print(time_end, sensor_id, avg_wind_speed, max_value, min_value)
 
                             # del sens[sensor_id][wind[0]]
 
                         elif wind[1] in list(sens_wind[sensor_id].keys()):
-                            avg_value = round(get_avg_direction(sens_wind[sensor_id][wind[0]], 1)[0], znk)
-                            print(time_end, sensor_id, avg_value)
+                            method_processing_direction = [
+                                measurand_processing[mesurand_label_method_processing_avg]
+                            ]
+                            avg_wind_direction = round(get_avg_direction(sens_wind[sensor_id][wind[0]], 1)[0], znk)
+                            print(time_end, sensor_id, avg_wind_direction)
 
-                            # del sens[sensor_id][wind[1]]
-            #
-            #         if sens[sensor_id]:
-            #             for mesurand in sens[sensor_id].keys():
-            #                 avg_value = round(sum(sens[sensor_id][mesurand])/len(sens[sensor_id][mesurand]), znk)
-            #                 max_value = round(max(sens[sensor_id][mesurand]), znk)
-            #                 min_value = round(min(sens[sensor_id][mesurand]), znk)
-            #                 print(time_end, sensor_id, mesurand, avg_value, max_value, min_value)
-
+                        if avg_wind_speed:
+                            values = values_out(
+                                values=values, source_id=sensor_id, measurand_id=wind[0],
+                                method_processing=method_processing_speed,
+                                time_obs=time_end, value_floats=[
+                                    min_value, max_value, avg_wind_speed, avg_wind_vector_speed
+                                ]
+                            )
+                        if avg_wind_direction:
+                            values = values_out(
+                                values=values, source_id=sensor_id, measurand_id=wind[1],
+                                method_processing=method_processing_direction,
+                                time_obs=time_end, value_floats=[avg_wind_direction, avg_wind_vector_direction]
+                            )
             tStart = tStart + timedelta(minutes=avg_time)
-
+            # print(values)
         poligon_db.disconnect()
         return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
     except KeyboardInterrupt:

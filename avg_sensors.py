@@ -18,11 +18,11 @@ if __name__ == '__main__':
 
     # Раскоментировать и ввести необходимые параметры для ручного ввода
     #
-    # start_time = '23-02-01 00:00:00'                        # Формат 'YY-MM-DD HH:mm'
-    # finish_time = '23-01-31 00:00:00'    # Формат 'YY-MM-DD HH:mm'
-    period = 60
-    avg_time = 20
-    # prev_days = 2
+    # start_time = '23-02-01 00:00'                        # Формат 'YY-MM-DD HH:mm'
+    # finish_time = '23-02-03 00:00'    # Формат 'YY-MM-DD HH:mm'
+    # period = 60
+    avg_time = 60*24
+    prev_days = 30
 
     result = sql_request(
         prev_days=prev_days, time_start=start_time, time_finish=finish_time, period=period,
