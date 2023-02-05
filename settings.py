@@ -35,7 +35,8 @@ table_request_sensor = f'{scheme_data}.{table_in_data} join {scheme_info}.{table
 sql_label_measurands = "label {NOT} like '{LABEL_MEASURAND}'"
 
 sql_parameter_no_wind = "source_id::varchar(255), label,  measurand_id, min(value_float[1]), " \
-                        "max(value_float[1]), round(avg(value_float[1])::numeric, {znk})::float".format(znk=znk)
+                        "max(value_float[1]), round(avg(value_float[1])::numeric," \
+                        " {znk})::float, count(value_float)".format(znk=znk)
 
 sql_parameter_wind = "source_id::varchar(255), label, measurand_id, array_agg(value_float[1])"
 
@@ -53,5 +54,9 @@ sql_having_sensor = "count(value_float) != 0"
 sql_value_pattern = "({SOURCE_ID}, {MEASURAND_ID}, {METHOD_PROCESSING}, '{TIME_OBS}','{TIME_REC}','{{{VALUE}}}')"
 
 sql_value_insert_pattern = "insert into {TABLE} ({PARAMETERS}) values ({VALUES})"
+
+sql_select_id_method_processing = f"(select id from {scheme_info}.{table_measurand_processing} " \
+                                  f"where {sql_label_measurands})"
+
 
 

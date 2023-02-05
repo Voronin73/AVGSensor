@@ -128,22 +128,23 @@ class ConnectionManager:
 
     def requests(self, parameter, tabel, condition='', group='', group_having='', order='', x=3000):
         n = 0
+
+        if condition:
+            condition = f' WHERE {condition}'
+        if group:
+            group = f' group by {group}'
+        if group_having:
+            group_having = f' having {group_having}'
+        if order:
+            order = f' order by {order}'
         while True:
-            if condition:
-                condition = f' WHERE {condition}'
-            if group:
-                group = f' group by {group}'
-            if group_having:
-                group_having = f' having {group_having}'
-            if order:
-                order = f' order by {order}'
             self.result = ''
             request = self.__request.format(
                 parameter=parameter, tabel=tabel, condition=condition,
                 group=group, group_having=group_having, order=order
             )
             try:
-                # print(request)
+                print(request)
                 self.__cursor.execute(request)
                 self.result = self.__cursor.fetchmany(x)
                 self.result_err = 'ok'
