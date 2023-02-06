@@ -65,10 +65,48 @@ def arguments():
         metavar=': таймаут'
     )
 
+    parser_group.add_argument(
+        '-id_s', '--source_id', type=int, default=[''], nargs='+',
+        help='Список "id" источников информации.',
+        metavar=': "id" источник информации'
+    )
+
+    parser_group.add_argument(
+        '-no_id_s', '--no_source_id', type=int, default=[''], nargs='+',
+        help='Список "id" не используемых источников информации.',
+        metavar=': "id" не используемых источник информации'
+    )
+
+    parser_group.add_argument(
+        '-id_m', '--measurand_id', type=int, default=[''], nargs='+',
+        help='Список "id" параметров информации.',
+        metavar=': "id" параметров информации.'
+    )
+
+    parser_group.add_argument(
+        '-no_id_m', '--no_measurand_id', type=int, default=[''], nargs='+',
+        help='Список "id" не используемых параметров информации.',
+        metavar=': "id" не используемых параметров информации.'
+    )
+
+    parser_group.add_argument(
+        '-l_m', '--measurand_label', type=str, default=[''], nargs='+',
+        help='Список "label" параметров информации.',
+        metavar=': "label" параметров информации.'
+    )
+
+    parser_group.add_argument(
+        '-no_l_m', '--no_measurand_label', type=str, default=[''], nargs='+',
+        help='Список "label" не используемых параметров информации.',
+        metavar=': "label" не используемых параметров информации.'
+    )
+
     namespace = parser.parse_args(argv[1:])
 
     return namespace.prev_day, namespace.start_time, namespace.finish_time, namespace.period,\
-        namespace.avg_time, namespace.col_string, namespace.timeout
+        namespace.avg_time, namespace.col_string, namespace.timeout, namespace.source_id,\
+        namespace.no_source_id, namespace.measurand_id, namespace.no_measurand_id, \
+        namespace.measurand_label, namespace.no_measurand_label
 
 
 def get_avg_direction(speeds, directions):  # Осреднение без учета направления
@@ -171,13 +209,84 @@ def values_out(values, source_id, measurand_id, method_processing, time_obs, val
         time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
         values += sql_value_pattern.format(
             SOURCE_ID=source_id, MEASURAND_ID=measurand_id,
-            METHOD_PROCESSING=sql_select_id_method_processing.format(NOT='', LABEL_MEASURAND=parameter),
+            METHOD_PROCESSING=sql_select_id_method_processing.format(
+                AND='', LABEL='label', NOT='', LABEL_MEASURAND=parameter
+            ),
             TIME_OBS=time_obs, TIME_REC=time_rec, VALUE=value
         )
     return values
 
 
-def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_string=3000, timeout=60, prev_days=0):
+def conditions(source_id: list,  measurand_id: list, no_source_id: list,
+               no_measurand_id: list, measurand_label: list, no_measurand_label: list):
+    condition = ''
+    column = ''
+    denial = ''
+
+    z = 0
+    for k in [source_id, measurand_id, no_source_id, no_measurand_id, measurand_label, no_measurand_label]:
+        ids = ''
+        if k[0]:
+            if z <= 3:
+                if z <= 1:
+                    denial = ''
+                    if z == 0:
+                        column = 'source_id'
+                    else:
+                        column = 'measurand_id'
+                elif z <= 3:
+                    denial = 'NOT'
+                    if z == 2:
+                        column = 'source_id'
+                    else:
+                        column = 'measurand_id'
+
+                for n in k:
+                    if ids:
+                        ids += f', {n}'
+                    else:
+                        ids = f'{n}'
+
+                if condition:
+                    condition += sql_id_condition.format(AND='AND', COLUMN=column, NOT=denial, ID_COLUMN=ids)
+                else:
+                    condition = sql_id_condition.format(AND='', COLUMN=column, NOT=denial, ID_COLUMN=ids)
+            else:
+                column = 'label'
+                if z == 4:
+                    denial = ''
+                    label = ''
+                    for n in k:
+                        if label:
+                            label += sql_label_measurands.format(AND='OR', LABEL=column, NOT=denial,
+                                                                 LABEL_MEASURAND=n)
+                        else:
+                            label = '(' + sql_label_measurands.format(AND='', LABEL=column, NOT=denial,
+                                                                      LABEL_MEASURAND=n)
+                    if label:
+                        if condition:
+                            condition += f' and {label}) '
+                        else:
+                            condition = f'{label}) '
+                else:
+                    denial = 'NOT'
+                    for n in k:
+                        if condition:
+                            condition += sql_label_measurands.format(AND='AND', LABEL=column, NOT=denial,
+                                                                     LABEL_MEASURAND=n)
+                        else:
+                            condition = sql_label_measurands.format(AND='', LABEL=column, NOT=denial,
+                                                                    LABEL_MEASURAND=n)
+        z += 1
+    return condition
+
+
+
+def sql_request(
+        time_start='', time_finish='', period=1440, avg_time=1, source_id=None, measurand_id=None, no_source_id=None,
+        no_measurand_id=None, measurand_label=None, no_measurand_label=None,
+        col_string=3000, timeout=60, prev_days=0
+):
 
     tNow = datetime.utcnow()
     times = check_time(
@@ -187,48 +296,36 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
         return
     tStart_func, tStart, tFinish = times
 
+    for no_label in no_measurand_label:
+        if no_label:
+            if no_label not in measurand_labels_not_avg:
+                measurand_labels_not_avg.append(no_label)
+
+    measurand_label_wind = []
+    if measurand_label[0]:
+        measurand_label_wind = measurand_label.copy()
+    measurand_labels_not_avg_wind = measurand_labels_not_avg.copy()
+    for label_wind in measurand_winds_label:
+        for label in label_wind:
+            if label not in measurand_label:
+                measurand_label_wind.append(label)
+            if label not in measurand_labels_not_avg:
+                measurand_labels_not_avg.append(label)
+
+    condition_sensor_wind = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
+                                       no_measurand_id=no_measurand_id, measurand_label=measurand_label_wind,
+                                       no_measurand_label=measurand_labels_not_avg_wind
+                                       )
+    condition_sensor = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
+                                  no_measurand_id=no_measurand_id, measurand_label=measurand_label,
+                                  no_measurand_label=measurand_labels_not_avg
+                                  )
+
     poligon_db = ConnectionManager(
         ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
         user=DB_POLIGON_USER, password=DB_POLIGON_PASSWD, timeout=timeout
     )
     try:
-        # poligon_db.requests(
-        #     parameter='method_processing, id', tabel=f'{scheme_info}.{table_measurand_processing}',
-        #     condition='',
-        #     x=20
-        # )
-        # measurand_processing = {}
-        # for key in poligon_db.result:
-        #     measurand_processing[key[0]] = key[1]
-
-        condition_measurand_wind = ''
-        for label in measurand_winds_label:
-            if label:
-                if condition_measurand_wind:
-                    condition_measurand_wind += ' or ' + sql_label_measurands.format(LABEL_MEASURAND=label[0],
-                                                                                     NOT='')
-                    condition_measurand_wind += ' or ' + sql_label_measurands.format(LABEL_MEASURAND=label[1],
-                                                                                     NOT='')
-                else:
-                    condition_measurand_wind += '(' + sql_label_measurands.format(LABEL_MEASURAND=label[0],
-                                                                                  NOT='')
-                    condition_measurand_wind += ' or ' + sql_label_measurands.format(LABEL_MEASURAND=label[1],
-                                                                                     NOT='')
-        condition_measurand_wind += ') and'
-
-        condition_no_measurand = ''
-        for label in measurand_winds_label:
-            if label:
-                measurand_labels_not_avg.append(label[0])
-                measurand_labels_not_avg.append(label[1])
-        for label in measurand_labels_not_avg:
-            if label:
-                if condition_no_measurand:
-                    condition_no_measurand += ' and ' + sql_label_measurands.format(LABEL_MEASURAND=label, NOT='NOT')
-                else:
-                    condition_no_measurand = '' + sql_label_measurands.format(LABEL_MEASURAND=label, NOT='NOT')
-        condition_no_measurand += ' and'
-
         while tStart <= tFinish - timedelta(minutes=avg_time):
             time_beginning = tStart.strftime('%Y-%m-%d %H:%M:%S')
             time_end = (tStart + timedelta(minutes=avg_time)).strftime('%Y-%m-%d %H:%M:%S')
@@ -237,7 +334,7 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
             poligon_db.requests(
                 parameter=sql_parameter_no_wind, tabel=table_request_sensor,
                 condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
-                                                       TIME_END=time_end, MEASURAND=condition_no_measurand),
+                                                       TIME_END=time_end, AND='AND', MEASURAND=condition_sensor),
                 group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
             print(poligon_db.result)
@@ -257,16 +354,16 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
                     )
                     # Формирование словаря по ключам source_id с словарями по ключам label_measurand
                     if x[0] in sens:
-                        sens[x[0]][x[1]] = [x[2], [x[3], x[4], x[5]]]
+                        sens[x[0]][x[1]] = [x[2], x[6], [x[3], x[4], x[5]]]
                     else:
-                        sens[x[0]] = {x[1]: [x[2], [x[3], x[4], x[5]]]}
+                        sens[x[0]] = {x[1]: [x[2], x[6], [x[3], x[4], x[5]]]}
 
             # print(values)
             poligon_db.requests(
                 parameter=sql_parameter_wind, tabel=table_request_sensor,
                 condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
-                                                       TIME_END=time_end,
-                                                       MEASURAND=condition_measurand_wind),
+                                                       TIME_END=time_end, AND='AND',
+                                                       MEASURAND=condition_sensor_wind),
                 group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
             # print(poligon_db.result)
@@ -349,6 +446,7 @@ def sql_request(time_start='', time_finish='', period=1440, avg_time=1, col_stri
                             )
             tStart = tStart + timedelta(minutes=avg_time)
             print(values)
+            print(sens)
         poligon_db.disconnect()
         return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
     except KeyboardInterrupt:

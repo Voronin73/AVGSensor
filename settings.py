@@ -32,16 +32,18 @@ table_measurand_processing = 'measurand_processing'
 table_request_sensor = f'{scheme_data}.{table_in_data} join {scheme_info}.{table_measurand} on ' \
                        f'{scheme_data}.{table_in_data}.measurand_id = {scheme_info}.{table_measurand}.id'
 
-sql_label_measurands = "label {NOT} like '{LABEL_MEASURAND}'"
+sql_label_measurands = "{AND} {LABEL} {NOT} like '{LABEL_MEASURAND}' "
+sql_id_condition = "{AND} {COLUMN} {NOT} in ({ID_COLUMN}) "
+
 
 sql_parameter_no_wind = "source_id::varchar(255), label,  measurand_id, min(value_float[1]), " \
                         "max(value_float[1]), round(avg(value_float[1])::numeric," \
                         " {znk})::float, count(value_float)".format(znk=znk)
 
-sql_parameter_wind = "source_id::varchar(255), label, measurand_id, array_agg(value_float[1])"
+sql_parameter_wind = "source_id::varchar(255), label, measurand_id, array_agg(value_float[1]), count(value_float)"
 
-sql_condition_sensors = "(time_obs between '{TIME_BEGIN}' and '{TIME_END}') and {MEASURAND} " \
-                        " value_float is not null and value_float[1] is not null"
+sql_condition_sensors = "(time_obs between '{TIME_BEGIN}' and '{TIME_END}') {AND} {MEASURAND} " \
+                        "and value_float is not null and value_float[1] is not null"
 
 sql_group_sensors = "source_id, label, measurand_id"
 
