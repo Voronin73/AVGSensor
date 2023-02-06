@@ -53,7 +53,8 @@ sql_having_sensor = "count(value_float) != 0"
 #                     " select id from info.measurand_processing where method_processing like " \
 #                     "'{METHOD_PROCESSING}', '{TIME_OBS}','{TIME_REC}','{{{VALUE}}}')"
 
-sql_value_pattern = "({SOURCE_ID}, {MEASURAND_ID}, {METHOD_PROCESSING}, '{TIME_OBS}','{TIME_REC}','{{{VALUE}}}')"
+sql_value_pattern = "({SOURCE_ID}, {MEASURAND_ID}, {METHOD_PROCESSING}, '{TIME_OBS}','{TIME_REC}'," \
+                    "'{{{VALUE}}}, {COUNT}')"
 
 sql_value_insert_pattern = "insert into {TABLE} ({PARAMETERS}) values ({VALUES})"
 
