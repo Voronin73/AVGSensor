@@ -337,7 +337,7 @@ def sql_request(
                                                        TIME_END=time_end, AND='AND', MEASURAND=condition_sensor),
                 group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
-            print(poligon_db.result)
+            # print(poligon_db.result)
             sens = {}
             values = ''
             if poligon_db.result:

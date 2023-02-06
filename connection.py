@@ -144,7 +144,7 @@ class ConnectionManager:
                 group=group, group_having=group_having, order=order
             )
             try:
-                print(request)
+                # print(request)
                 self.__cursor.execute(request)
                 self.result = self.__cursor.fetchmany(x)
                 self.result_err = 'ok'
