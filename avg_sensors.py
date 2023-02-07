@@ -24,9 +24,9 @@ if __name__ == '__main__':
     #
     # start_time = '23-02-01 00:00:00'                        # Формат 'YY-MM-DD HH:mm'
     # finish_time = '23-01-31 00:00:00'    # Формат 'YY-MM-DD HH:mm'
-    period = 1
-    avg_time = 1
-    # prev_days = 1
+    # period = 3
+    # avg_time = 1
+    prev_days = 3
 
     result = sql_request(
         prev_days=prev_days, time_start=start_time, time_finish=finish_time, period=period,
