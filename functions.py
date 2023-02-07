@@ -6,6 +6,7 @@ from log_files import info
 from constants import start_dir
 from argparse import ArgumentParser
 from sys import argv
+from exel_files import add_exel_files
 
 
 def arguments():
@@ -101,12 +102,24 @@ def arguments():
         metavar=': "label" не используемых параметров информации.'
     )
 
+    parser_group.add_argument(
+        '-q', '--sql_table', type=int, default=0,
+        help='Запись данных в базу данных. 0 - не писать, 1 - записать в файл.',
+        metavar=': запись данных в EXEL файл.'
+    )
+
+    parser_group.add_argument(
+        '-e', '--exel', type=int, default=1,
+        help='Запись данных в EXEL файл. 0 - не писать, 1 - записать в файл.',
+        metavar=': запись данных в EXEL файл.'
+    )
+
     namespace = parser.parse_args(argv[1:])
 
     return namespace.prev_day, namespace.start_time, namespace.finish_time, namespace.period,\
         namespace.avg_time, namespace.col_string, namespace.timeout, namespace.source_id,\
         namespace.no_source_id, namespace.measurand_id, namespace.no_measurand_id, \
-        namespace.measurand_label, namespace.no_measurand_label
+        namespace.measurand_label, namespace.no_measurand_label, namespace.sql_table, namespace.exel
 
 
 def get_avg_direction(speeds, directions):  # Осреднение без учета направления
@@ -202,19 +215,31 @@ def check_time(prev_days: int, time_start: str, time_finish: str, period: int, a
     return tStart_func, tStart, tFinish
 
 
-def values_out(values, source_id, measurand_id, method_processing, time_obs, value_floats, value_count):
+def values_out(
+        values, values_exel, source_id, measurand_id, measurand_label,
+        method_processing, time_obs, value_floats, value_count
+):
+
     for parameter, value in zip(method_processing, value_floats):
-        if values:
-            values += ', '
-        time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-        values += sql_value_pattern.format(
-            SOURCE_ID=source_id, MEASURAND_ID=measurand_id,
-            METHOD_PROCESSING=sql_select_id_method_processing.format(
-                AND='', LABEL='label', NOT='', LABEL_MEASURAND=parameter
-            ),
-            TIME_OBS=time_obs, TIME_REC=time_rec, VALUE=value, COUNT=value_count
-        )
-    return values
+
+        if type(values_exel) == list:
+            # if values_exel:
+            values_exel.append([time_obs, source_id, measurand_id, measurand_label, parameter, value, value_count])
+            # else:
+            #     values_exel = [[time_obs, source_id, measurand_id, parameter, value, value_count]
+        if type(values) == str:
+            if values:
+                values += ', '
+            time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
+            values += sql_value_pattern.format(
+                SOURCE_ID=source_id, MEASURAND_ID=measurand_id,
+                METHOD_PROCESSING=sql_select_id_method_processing.format(
+                    AND='', LABEL='label', NOT='', LABEL_MEASURAND=parameter
+                ),
+                TIME_OBS=time_obs, TIME_REC=time_rec, VALUE=value, COUNT=value_count
+            )
+
+    return values, values_exel
 
 
 def conditions(source_id: list,  measurand_id: list, no_source_id: list,
@@ -284,10 +309,17 @@ def conditions(source_id: list,  measurand_id: list, no_source_id: list,
 
 def sql_request(
         time_start='', time_finish='', period=1440, avg_time=1, source_id=None, measurand_id=None, no_source_id=None,
-        no_measurand_id=None, measurand_label=None, no_measurand_label=None,
+        no_measurand_id=None, measurand_label=None, no_measurand_label=None, sql_table=None, exel=None,
         col_string=3000, timeout=60, prev_days=0
 ):
-
+    if exel == 1:
+        values_exel = []
+    else:
+        values_exel = None
+    if sql_table == 1:
+        values = ''
+    else:
+        values = None
     tNow = datetime.utcnow()
     times = check_time(
         time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time, prev_days=prev_days
@@ -338,25 +370,20 @@ def sql_request(
                 group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
             )
             # print(poligon_db.result)
-            sens = {}
-            values = ''
+
             if poligon_db.result:
                 method_processing = [
                     mesurand_label_method_processing_min,
                     mesurand_label_method_processing_max,
                     mesurand_label_method_processing_avg
                 ]
-
+                # Формирование информации для записи и передачи
                 for x in poligon_db.result:
-                    values = values_out(
-                        values=values, source_id=x[0], measurand_id=x[2], method_processing=method_processing,
-                        time_obs=time_end, value_floats=[x[3], x[4], x[5]], value_count=x[6]
+                    values, values_exel = values_out(
+                        values=values, values_exel=values_exel, source_id=x[0], measurand_id=x[2], measurand_label=x[1],
+                        method_processing=method_processing, time_obs=time_end,
+                        value_floats=[x[3], x[4], x[5]], value_count=x[6]
                     )
-                    # Формирование словаря по ключам source_id с словарями по ключам label_measurand
-                    if x[0] in sens:
-                        sens[x[0]][x[1]] = [x[2], [x[3], x[4], x[5]], x[6]]
-                    else:
-                        sens[x[0]] = {x[1]: [x[2], [x[3], x[4], x[5]], x[6]]}
 
             # print(values)
             poligon_db.requests(
@@ -431,23 +458,27 @@ def sql_request(
                             print(time_end, sensor_id, avg_wind_direction)
 
                         if avg_wind_speed:
-                            values = values_out(
-                                values=values, source_id=sensor_id, measurand_id=sens_wind[sensor_id][wind[0]][0],
-                                method_processing=method_processing_speed,
+                            values, values_exel = values_out(
+                                values=values, values_exel=values_exel, source_id=sensor_id,
+                                measurand_id=sens_wind[sensor_id][wind[0]][0],
+                                measurand_label=wind[0], method_processing=method_processing_speed,
                                 time_obs=time_end, value_floats=[
                                     min_value, max_value, avg_wind_speed, avg_wind_vector_speed
                                 ], value_count=sens_wind[sensor_id][wind[0]][2]
                             )
                         if avg_wind_direction:
-                            values = values_out(
-                                values=values, source_id=sensor_id, measurand_id=sens_wind[sensor_id][wind[1]][0],
-                                method_processing=method_processing_direction,
+                            values, values_exel = values_out(
+                                values=values, values_exel=values_exel, source_id=sensor_id,
+                                measurand_id=sens_wind[sensor_id][wind[1]][0],
+                                measurand_label=wind[1], method_processing=method_processing_direction,
                                 time_obs=time_end, value_floats=[avg_wind_direction, avg_wind_vector_direction],
                                 value_count=sens_wind[sensor_id][wind[1]][2]
                             )
             tStart = tStart + timedelta(minutes=avg_time)
             print(values)
-            print(sens)
+
+        if values_exel:
+            add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
         poligon_db.disconnect()
         return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
     except KeyboardInterrupt:
