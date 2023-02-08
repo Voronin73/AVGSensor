@@ -480,6 +480,9 @@ def sql_request(
         if values_exel:
             add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
         poligon_db.disconnect()
+        # if values_exel:
+        #     add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish, book=book, save=1)
+
         return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
     except KeyboardInterrupt:
         poligon_db.disconnect()
