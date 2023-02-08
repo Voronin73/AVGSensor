@@ -419,8 +419,10 @@ def sql_request(
 
                             method_processing_speed = [mesurand_label_method_processing_min,
                                                        mesurand_label_method_processing_max,
-                                                       mesurand_label_method_processing_avg]
-                            method_processing_direction = [mesurand_label_method_processing_avg]
+                                                       mesurand_label_method_processing_avg,
+                                                       mesurand_label_method_processing_vec_avg]
+                            method_processing_direction = [mesurand_label_method_processing_avg,
+                                                           mesurand_label_method_processing_vec_avg]
 
 
                             avg_wind_speed, avg_wind_direction = get_avg_direction(

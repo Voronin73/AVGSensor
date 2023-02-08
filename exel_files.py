@@ -48,7 +48,7 @@ def add_new_sheet(book, sheet_name, avd_time, time_start, time_finish, add_data,
         sheet_name = f'{sheet_name}, {n + 1}'
         sheet = book.create_sheet(sheet_name)
     sheet.merge_cells('A1:G1')
-    sheet['A1'] = f'Осреденение данных за {avd_time} мин. с "{time_start}" по "{time_finish}".'
+    sheet['A1'] = f'Осредненение данных за {avd_time} мин. с "{time_start}" по "{time_finish}".'
     sheet['A1'].alignment = Alignment(horizontal='center')
     sheet['A1'].font = Font(bold='bold', italic=True, size=12)
     sheet.append(['Time_obs', 'Sourse_id', 'Measurand_id', 'Measurand_label',
