@@ -1,6 +1,5 @@
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
-
 from os.path import exists
 from os import remove, mkdir
 from constants import start_dir, sl
