@@ -1,5 +1,6 @@
 import math
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from settings import *
 from connection import ConnectionManager
 from log_files import info
@@ -30,12 +31,29 @@ def arguments():
         metavar=': количество суток'
     )
     parser_group.add_argument(
+        '-m', '--prev_month', type=int, default=0,
+        help='Выполняется осреднение за количество предыдущих месяцев, '
+             'указаное в переменной, '
+             'не используются критерии периода осреднения. '
+             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
+             'По умолчанию занчение "0".',
+        metavar=': количество месяцев'
+    )
+    parser_group.add_argument(
+        '-y', '--prev_year', type=int, default=0,
+        help='Выполняется осреднение за количество предыдущих лет, '
+             'указаное в переменной, '
+             'не используются критерии периода осреднения. '
+             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
+             'По умолчанию занчение "0".',
+        metavar=': количество лет'
+    )
+    parser_group.add_argument(
         '-s', '--start_time', type=str, default='',
         help='Время начала осреднения данных в формате "YY-MM-DD HH:mm". '
              'Не обязательный параметер.',
         metavar=': дата и время начала осреднения'
     )
-
     parser_group.add_argument(
         '-f', '--finish_time', type=str, default='',
         help='Время окончания осреднения данных в формате "YY-MM-DD HH:mm". '
@@ -55,7 +73,7 @@ def arguments():
         metavar=': время осреднения'
     )
     parser_group.add_argument(
-        '-c', '--col_string', type=int, default=30000,
+        '-c', '--col_string', type=int, default=3000000,
         help='Максимальное количество строк получаемых от базы данных '
         '(чем больще период тем больше строк, по умолчанию 30000)',
         metavar=': количество получаемых строк'
@@ -116,7 +134,8 @@ def arguments():
 
     namespace = parser.parse_args(argv[1:])
 
-    return namespace.prev_day, namespace.start_time, namespace.finish_time, namespace.period,\
+    return namespace.prev_day, namespace.prev_month, namespace.prev_year, namespace.start_time, \
+        namespace.finish_time, namespace.period,\
         namespace.avg_time, namespace.col_string, namespace.timeout, namespace.source_id,\
         namespace.no_source_id, namespace.measurand_id, namespace.no_measurand_id, \
         namespace.measurand_label, namespace.no_measurand_label, namespace.sql_table, namespace.exel
@@ -156,10 +175,13 @@ def time_format(date_time, formate='%y-%m-%d %H:%M:%S'):
         return 'error'
 
 
-def check_time(prev_days: int, time_start: str, time_finish: str, period: int, avg_time: int):
+def check_time(
+        prev_days: int, prev_month: int, prev_year: int,
+        time_start: str, time_finish: str, period: int, avg_time: int
+):
 
     tNow = datetime.utcnow()
-    if prev_days == 0:
+    if prev_days == 0 and prev_month == 0 and prev_year == 0:
         formate = '%y-%m-%d %H:%M'
 
         if time_start:
@@ -201,9 +223,21 @@ def check_time(prev_days: int, time_start: str, time_finish: str, period: int, a
                 tFinish = datetime.strptime(time_finish, '%Y-%m-%d %H:%M')
                 tStart = tFinish - timedelta(minutes=period)
 
+    elif prev_days != 0 and prev_month == 0 and prev_year == 0:
+        tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+        tStart = tFinish - relativedelta(days=prev_days)
+    elif prev_days == 0 and prev_month != 0 and prev_year == 0:
+        tFinish = tNow.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        tStart = tFinish - relativedelta(months=prev_month)
+    elif prev_days == 0 and prev_month == 0 and prev_year != 0:
+        tFinish = tNow.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        tStart = tFinish - relativedelta(years=prev_year)
     else:
         tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - timedelta(days=prev_days)
+        tStart = tFinish - \
+            relativedelta(years=prev_year) - \
+            relativedelta(months=prev_month) - \
+            relativedelta(days=prev_days)
 
     if tFinish - timedelta(minutes=avg_time) < tStart:
         info(f'Не верно задан период "{period} мин." или время осреднения данных "{avg_time} мин.".'
@@ -312,7 +346,7 @@ def conditions(source_id: list,  measurand_id: list, no_source_id: list,
 def sql_request(
         time_start='', time_finish='', period=1440, avg_time=1, source_id=None, measurand_id=None, no_source_id=None,
         no_measurand_id=None, measurand_label=None, no_measurand_label=None, sql_table=None, exel=None,
-        col_string=3000, timeout=60, prev_days=0
+        col_string=3000, timeout=60, prev_days=0, prev_month=0, prev_year=0
 ):
     if exel == 1:
         values_exel = []
@@ -324,7 +358,8 @@ def sql_request(
         values = None
     tNow = datetime.utcnow()
     times = check_time(
-        time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time, prev_days=prev_days
+        time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time,
+        prev_days=prev_days, prev_month=prev_month, prev_year=prev_year
     )
     if not times:
         return

@@ -1,7 +1,7 @@
 from log_files import info
 from functions import sql_request, arguments
 from constants import start_dir
-from settings import measurand_labels_not_avg
+
 
 # Press the green button in the gutter to run the script.
 
@@ -15,7 +15,8 @@ if __name__ == '__main__':
        время осреднения в минутах (по умолчанию 1 минута, не должно превышать 48 часов),
        количество строк (не обязательный параметр по умолчанию 3000, чем больше интервал тем больше количестао строк)"""
 
-    prev_days, start_time, finish_time, period, avg_time, col_string, timeout, source_id, no_source_id,\
+    prev_days, prev_month, prev_year, start_time, finish_time, period, avg_time, col_string, timeout, \
+        source_id, no_source_id,\
         measurand_id, no_measurand_id, measurand_label, no_measurand_label, sql_table, exel = arguments()
     # print(source_id, no_source_id, measurand_id, no_measurand_id, measurand_label, no_measurand_label)
     #
@@ -33,10 +34,11 @@ if __name__ == '__main__':
 
 
     result = sql_request(
-        prev_days=prev_days, time_start=start_time, time_finish=finish_time, period=period,
+        prev_days=prev_days, prev_month=prev_month, prev_year=prev_year, time_start=start_time,
+        time_finish=finish_time, period=period,
         avg_time=avg_time, source_id=source_id, no_source_id=no_source_id, measurand_id=measurand_id,
         no_measurand_id=no_measurand_id, measurand_label=measurand_label, sql_table=sql_table, exel=exel,
-        no_measurand_label=no_measurand_label, col_string=3000000, timeout=60
+        no_measurand_label=no_measurand_label, col_string=col_string, timeout=timeout
     )
     if result:
         info(
