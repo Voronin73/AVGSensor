@@ -38,23 +38,25 @@ sql_id_condition = "{AND} {COLUMN} {NOT} in ({ID_COLUMN}) "
 
 sql_parameter_no_wind = "source_id::varchar(255), label,  measurand_id, min(value_float[1]), " \
                         "max(value_float[1]), round(avg(value_float[1])::numeric," \
-                        " {znk})::float, count(value_float)".format(znk=znk)
+                        " {znk})::float, array_agg( value_text[1]), count(measurand_id)".format(znk=znk)
 
-sql_parameter_wind = "source_id::varchar(255), label, measurand_id, array_agg(value_float[1]), count(value_float)"
+sql_parameter_wind = "source_id::varchar(255), label, measurand_id, array_agg(value_float[1]), " \
+                     "array_agg( value_text[1]), count(value_float)"
 
 sql_condition_sensors = "(time_obs between '{TIME_BEGIN}' and '{TIME_END}') {AND} {MEASURAND} " \
-                        "and value_float is not null and value_float[1] is not null"
+                        "and ((value_float is not null and value_float[1] is not null) or " \
+                        "(value_text is not null and value_text[1] is not null))"
 
 sql_group_sensors = "source_id, label, measurand_id"
 
-sql_having_sensor = "count(value_float) != 0"
+sql_having_sensor = "count(value_float) != 0 or count(value_text) != 0"
 
 # sql_value_pattern = "({SOURCE_ID}, {MEASURAND_ID}," \
 #                     " select id from info.measurand_processing where method_processing like " \
 #                     "'{METHOD_PROCESSING}', '{TIME_OBS}','{TIME_REC}','{{{VALUE}}}')"
 
 sql_value_pattern = "({SOURCE_ID}, {MEASURAND_ID}, {METHOD_PROCESSING}, '{TIME_OBS}','{TIME_REC}'," \
-                    "'{{{VALUE}}}, {COUNT}')"
+                    "'{{{VALUE_FLOAT}}}', '{{{VALUE_TEXT}}}', {COUNT}')"
 
 sql_value_insert_pattern = "insert into {TABLE} ({PARAMETERS}) values ({VALUES})"
 

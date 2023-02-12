@@ -22,14 +22,14 @@ if __name__ == '__main__':
     # print(measurand_labels_not_avg)
     # Раскоментировать и ввести необходимые параметры для ручного ввода
     #
-    start_time = '23-01-01 00:00'                        # Формат 'YY-MM-DD HH:mm'
-    finish_time = '23-02-01 00:00'    # Формат 'YY-MM-DD HH:mm'
-    # period = 3
-    # avg_time = 1
+    # start_time = '23-02-01 00:00'                        # Формат 'YY-MM-DD HH:mm'
+    # finish_time = '23-02-02 00:00'    # Формат 'YY-MM-DD HH:mm'
+    period = 1
+    avg_time = 1
     # prev_days = 3
-    source_id = [177166, 28, 29]
-    measurand_id = [181, 52]
-    sql_table = 0
+    # source_id = [177166, 29, 28]
+    # measurand_id = [181, 52]
+    sql_table = 1
 
 
     result = sql_request(

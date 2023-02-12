@@ -217,16 +217,18 @@ def check_time(prev_days: int, time_start: str, time_finish: str, period: int, a
 
 def values_out(
         values, values_exel, source_id, measurand_id, measurand_label,
-        method_processing, time_obs, value_floats, value_count
+        method_processing, time_obs, value_data, value_count
 ):
 
-    for parameter, value in zip(method_processing, value_floats):
-
-        if type(values_exel) == list:
-            # if values_exel:
-            values_exel.append([time_obs, source_id, measurand_id, measurand_label, parameter, value, value_count])
-            # else:
-            #     values_exel = [[time_obs, source_id, measurand_id, parameter, value, value_count]
+    for parameter, value in zip(method_processing, value_data):
+        value_float = ''
+        value_text = ''
+        if type(value) == float:
+            value_float = value
+            if type(values_exel) == list:
+                values_exel.append([time_obs, source_id, measurand_id, measurand_label, parameter, value, value_count])
+        else:
+            value_text = value
         if type(values) == str:
             if values:
                 values += ', '
@@ -236,7 +238,7 @@ def values_out(
                 METHOD_PROCESSING=sql_select_id_method_processing.format(
                     AND='', LABEL='label', NOT='', LABEL_MEASURAND=parameter
                 ),
-                TIME_OBS=time_obs, TIME_REC=time_rec, VALUE=value, COUNT=value_count
+                TIME_OBS=time_obs, TIME_REC=time_rec, VALUE_FLOAT=value_float, VALUE_TEXT=value_text, COUNT=value_count
             )
 
     return values, values_exel
@@ -372,17 +374,35 @@ def sql_request(
             # print(poligon_db.result)
 
             if poligon_db.result:
-                method_processing = [
-                    mesurand_label_method_processing_min,
-                    mesurand_label_method_processing_max,
-                    mesurand_label_method_processing_avg
-                ]
+                # method_processing = [
+                #     mesurand_label_method_processing_min,
+                #     mesurand_label_method_processing_max,
+                #     mesurand_label_method_processing_avg
+                # ]
                 # Формирование информации для записи и передачи
                 for x in poligon_db.result:
+                    # print(x)
+                    if type(x[3]) == float or type(x[4]) == float or type(x[5]) == float:
+                        method_processing = [
+                            mesurand_label_method_processing_min,
+                            mesurand_label_method_processing_max,
+                            mesurand_label_method_processing_avg
+                        ]
+                        val = [x[3], x[4], x[5]]
+                    else:
+                        method_processing = [mesurand_label_method_processing_acc]
+                        val = ''
+                        for y in x[6]:
+                            if y not in val:
+                                if val:
+                                    val += f', {y}'
+                                else:
+                                    val = y
+                    # print(val)
                     values, values_exel = values_out(
-                        values=values, values_exel=values_exel, source_id=x[0], measurand_id=x[2], measurand_label=x[1],
-                        method_processing=method_processing, time_obs=time_end,
-                        value_floats=[x[3], x[4], x[5]], value_count=x[6]
+                        values=values, values_exel=values_exel, source_id=x[0], measurand_id=x[2],
+                        measurand_label=x[1], method_processing=method_processing, time_obs=time_end,
+                        value_data=val, value_count=x[7]
                     )
 
             # print(values)
@@ -398,9 +418,9 @@ def sql_request(
                 sens_wind = {}
                 for x in poligon_db.result:
                     if x[0] in sens_wind:
-                        sens_wind[x[0]][x[1]] = [x[2], x[3], x[4]]
+                        sens_wind[x[0]][x[1]] = [x[2], x[3], x[4], x[5]]
                     else:
-                        sens_wind[x[0]] = {x[1]: [x[2], x[3], x[4]]}
+                        sens_wind[x[0]] = {x[1]: [x[2], x[3], x[4], x[5]]}
                 # print(sens_wind)
             #
                 for sensor_id in sens_wind.keys():
@@ -459,31 +479,29 @@ def sql_request(
                             avg_wind_direction = round(get_avg_direction(sens_wind[sensor_id][wind[0]], 1)[0], znk)
                             print(time_end, sensor_id, avg_wind_direction)
 
-                        if avg_wind_speed:
+                        if method_processing_speed:
                             values, values_exel = values_out(
                                 values=values, values_exel=values_exel, source_id=sensor_id,
                                 measurand_id=sens_wind[sensor_id][wind[0]][0],
                                 measurand_label=wind[0], method_processing=method_processing_speed,
-                                time_obs=time_end, value_floats=[
+                                time_obs=time_end, value_data=[
                                     min_value, max_value, avg_wind_speed, avg_wind_vector_speed
-                                ], value_count=sens_wind[sensor_id][wind[0]][2]
+                                ], value_count=sens_wind[sensor_id][wind[0]][3]
                             )
-                        if avg_wind_direction:
+                        if method_processing_direction:
                             values, values_exel = values_out(
                                 values=values, values_exel=values_exel, source_id=sensor_id,
                                 measurand_id=sens_wind[sensor_id][wind[1]][0],
                                 measurand_label=wind[1], method_processing=method_processing_direction,
-                                time_obs=time_end, value_floats=[avg_wind_direction, avg_wind_vector_direction],
-                                value_count=sens_wind[sensor_id][wind[1]][2]
+                                time_obs=time_end, value_data=[avg_wind_direction, avg_wind_vector_direction],
+                                value_count=sens_wind[sensor_id][wind[1]][3]
                             )
             tStart = tStart + timedelta(minutes=avg_time)
-            print(values)
+            # print(values)
 
         if values_exel:
             add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
         poligon_db.disconnect()
-        # if values_exel:
-        #     add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish, book=book, save=1)
 
         return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
     except KeyboardInterrupt:

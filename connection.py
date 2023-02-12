@@ -170,7 +170,7 @@ class ConnectionManager:
             self.result = ''
             update = self.__update.format(table=table, values=values, conditions=conditions)
             try:
-                # print(update)
+                print(update)
                 self.__cursor.execute(update)
                 self.result = self.__connection.commit()
                 self.result_err = 'ok'
