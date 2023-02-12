@@ -234,10 +234,7 @@ def check_time(
         tStart = tFinish - relativedelta(years=prev_year)
     else:
         tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - \
-            relativedelta(years=prev_year) - \
-            relativedelta(months=prev_month) - \
-            relativedelta(days=prev_days)
+        tStart = tFinish - relativedelta(years=prev_year, months=prev_month, days=prev_days)
 
     if tFinish - timedelta(minutes=avg_time) < tStart:
         info(f'Не верно задан период "{period} мин." или время осреднения данных "{avg_time} мин.".'
