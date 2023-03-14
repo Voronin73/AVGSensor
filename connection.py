@@ -147,7 +147,7 @@ class ConnectionManager:
                 self.result = self.__connection.commit()
                 self.result_err = 'ok'
                 if description:
-                    info(f'Добавлены в таблицу {table_partition} за "{description}".', start_dir)
+                    info(f'Добавлены данные в таблицу {table_partition} за "{description}".', start_dir)
                 break
             except (Exception, psycopg2.Error) as error:
                 if 'повторяющееся значение ключа нарушает ограничение уникальности' in str(error):

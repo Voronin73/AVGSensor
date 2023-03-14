@@ -453,11 +453,11 @@ def avg(
 
                     db.inserts(scheme_data, [table_out_data, table_section_date],
                                insert_parameter_values, values, description=f'{time_start} - {time_finish}')
-
+                    # values = ''
                 # if values_exel:
                 #     add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
                 #
-                values = ''
+
 
         db.disconnect()
         return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func

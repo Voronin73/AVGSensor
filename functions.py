@@ -92,7 +92,7 @@ def arguments():
     )
 
     parser_group.add_argument(
-        '-q', '--sql_table', type=int, default=0,
+        '-q', '--sql_table', type=int, default=1,
         help='Запись данных в базу данных. 0 - не писать, 1 - записать в файл.',
         metavar=': запись данных в EXEL файл.'
     )
@@ -212,7 +212,6 @@ def check_time(time_start, time_finish, avg_time):
 
 def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: str, median_id: int):
 
-    tNow = datetime.utcnow()
     formate = '%Y-%m-%d %H:%M:%S'
     tStart = time_start
     tFinish = time_finish
@@ -228,9 +227,6 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_parameter = request_data_sens_minute.format(PERIOD='minute', INTERVAL=time_avg,
                                                             WIND=wind_id, COUNT=count_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE='')
-        # if not time_start:
-        #     tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
-        #     tStart = tFinish - relativedelta(days=1)
 
     elif time_avg == '1 hour':
         avg_time_datetime = relativedelta(hours=1)
@@ -241,7 +237,6 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_parameter = request_data_sens.format(PERIOD='hour', INTERVAL=time_avg,
                                                      WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
-        # if not time_start:
         tFinish = tFinish.replace(minute=0, second=0, microsecond=0)
         tStart = tStart.replace(minute=0, second=0, microsecond=0)
 
@@ -254,7 +249,6 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_parameter = request_data_sens.format(PERIOD='day', INTERVAL=time_avg,
                                                      WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
-        # if not time_start:
         tFinish = tFinish.replace(hour=0, minute=0, second=0, microsecond=0)
         tStart = tStart.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -267,7 +261,6 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_parameter = request_data_sens.format(PERIOD='month', INTERVAL=time_avg,
                                                      WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
-        # if not time_start:
         tFinish = tFinish.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         tStart = tStart.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -287,28 +280,6 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
     else:
         return None
 
-    # if time_start:
-    #     if len(time_start) < 18:
-    #         time_start += ':00'
-    #     if time_format(time_start, formate) == 'ok':
-    #         tStart = datetime.strptime(time_start, formate)
-    #     else:
-    #         info(f'Не верный формат времени начала "{time_start}".', start_dir)
-    #         return None
-    #     if time_finish:
-    #         if len(time_finish) < 18:
-    #             time_finish += ':00'
-    #         if time_format(time_start, formate) == 'ok':
-    #             tFinish = datetime.strptime(time_finish, formate)
-    #         else:
-    #             info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
-    #             return None
-    #         if tFinish - avg_time_datetime < tStart:
-    #             info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
-    #                  f'или время осреднения данных "{avg_time}".', start_dir)
-    #             return None
-    #     else:
-    #         tFinish = tNow.replace(second=0, microsecond=0)
 
     period_times_tmp = []
     tmp = tStart
