@@ -1,13 +1,21 @@
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from settings import *
-from connection import ConnectionManager
 from log_files import info
 from constants import start_dir
 from argparse import ArgumentParser
 from sys import argv
-from exel_files import add_exel_files
+
+
+def table_existing(table_section):
+    if table_section not in table_exist:
+        if len(table_exist) >= 10:
+            table_exist.pop(10)
+        table_exist.append(table_section)
+        return False
+    else:
+        return True
 
 
 def arguments():
@@ -22,32 +30,7 @@ def arguments():
 
     parser_group = parser.add_argument_group(title='Парамерты')
     parser_group.add_argument('--help', '-h', action='help', help='Справка')
-    parser_group.add_argument(
-        '-d', '--prev_day', type=int, default=0,
-        help='Выполняется осреднение за количество предыдущих суток, '
-             'указаное в переменной, с 00:00 по 00:00, не используются критерии периода осреднения. '
-             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
-             'По умолчанию занчение "0".',
-        metavar=': количество суток'
-    )
-    parser_group.add_argument(
-        '-m', '--prev_month', type=int, default=0,
-        help='Выполняется осреднение за количество предыдущих месяцев, '
-             'указаное в переменной, '
-             'не используются критерии периода осреднения. '
-             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
-             'По умолчанию занчение "0".',
-        metavar=': количество месяцев'
-    )
-    parser_group.add_argument(
-        '-y', '--prev_year', type=int, default=0,
-        help='Выполняется осреднение за количество предыдущих лет, '
-             'указаное в переменной, '
-             'не используются критерии периода осреднения. '
-             'Если аргумент равен "0", выполняется осреднение по другим указаным критериям.'
-             'По умолчанию занчение "0".',
-        metavar=': количество лет'
-    )
+
     parser_group.add_argument(
         '-s', '--start_time', type=str, default='',
         help='Время начала осреднения данных в формате "YY-MM-DD HH:mm". '
@@ -61,15 +44,15 @@ def arguments():
         metavar=': дата и время окончания осреднения'
     )
     parser_group.add_argument(
-        '-p', '--period', type=int, default=1440,
-        help='Используется если отсутствует параметер "Время начала остреднения". '
-             'Период осреднения данных (время окончания осреднения данных - период осреднения данных = '
-             'время начала осреднения данных), в минутах (по умолчанию 1440 минут (сутки)).',
-        metavar=': период осреднения'
+        '-u', '--auto', type=str, default='yes',
+        help='Автоматически осреднять за час, день, месяц, год при пересечении границы. '
+             'По умолчанию "yes".',
+        metavar=': автоматическое осреднение'
     )
     parser_group.add_argument(
-        '-a', '--avg_time', type=int, default=1,
-        help='Время осреднения данных в минутах (по умолчанию 1 минута).',
+        '-a', '--avg_time', type=str, default="1_minute",
+        help='Время осреднения данных: "1_minute" - 1 минута; "1_hour" - 1 час; "1_day" - 1 день;'
+             ' "1_month" - 1 месяц; "1_year" - 1 год, (по умолчанию 1 минута).',
         metavar=': время осреднения'
     )
     parser_group.add_argument(
@@ -79,7 +62,7 @@ def arguments():
         metavar=': количество получаемых строк'
     )
     parser_group.add_argument(
-        '-t', '--timeout', type=int, default=60,
+        '-t', '--timeout', type=int, default=180,
         help='Таймаут подключения и получения данных от базы данных в секундах (по умолчанию 60 секунд).',
         metavar=': таймаут'
     )
@@ -109,52 +92,38 @@ def arguments():
     )
 
     parser_group.add_argument(
-        '-l_m', '--measurand_label', type=str, default=[''], nargs='+',
-        help='Список "label" параметров информации.',
-        metavar=': "label" параметров информации.'
-    )
-
-    parser_group.add_argument(
-        '-no_l_m', '--no_measurand_label', type=str, default=[''], nargs='+',
-        help='Список "label" не используемых параметров информации.',
-        metavar=': "label" не используемых параметров информации.'
-    )
-
-    parser_group.add_argument(
         '-q', '--sql_table', type=int, default=0,
         help='Запись данных в базу данных. 0 - не писать, 1 - записать в файл.',
         metavar=': запись данных в EXEL файл.'
     )
 
     parser_group.add_argument(
-        '-e', '--exel', type=int, default=1,
+        '-e', '--exel', type=int, default=0,
         help='Запись данных в EXEL файл. 0 - не писать, 1 - записать в файл.',
         metavar=': запись данных в EXEL файл.'
     )
 
     namespace = parser.parse_args(argv[1:])
 
-    return namespace.prev_day, namespace.prev_month, namespace.prev_year, namespace.start_time, \
-        namespace.finish_time, namespace.period,\
+    return namespace.start_time, namespace.finish_time, namespace.auto, \
         namespace.avg_time, namespace.col_string, namespace.timeout, namespace.source_id,\
         namespace.no_source_id, namespace.measurand_id, namespace.no_measurand_id, \
-        namespace.measurand_label, namespace.no_measurand_label, namespace.sql_table, namespace.exel
+        namespace.sql_table, namespace.exel
 
 
-def get_avg_direction(speeds, directions):  # Осреднение без учета направления
+def get_avg_direction(directions):  # Осреднение без учета направления
     sinSum = 0
     cosSum = 0
-    speed = 0
-    for value1, value2 in zip(directions, speeds):
+
+    for value1 in directions:
         sinSum += math.sin(math.radians(value1))
         cosSum += math.cos(math.radians(value1))
-        speed += value2
     avg_direction = round((math.degrees(math.atan2(sinSum, cosSum)) + 360) % 360, znk)
-    avg_speed = round(speed/len(speeds), znk)
-    return avg_speed, avg_direction
+
+    return avg_direction
 
 
-def get_avg_direction_vector(speeds, directions):   # Осреднение с учетом скорости
+def get_avg_direction_vector(speeds: list, directions: list):   # Осреднение с учетом скорости
     sinSum = 0.0
     cosSum = 0.0
     for value, speed in zip(directions, speeds):
@@ -175,366 +144,299 @@ def time_format(date_time, formate='%y-%m-%d %H:%M:%S'):
         return 'error'
 
 
-def check_time(
-        prev_days: int, prev_month: int, prev_year: int,
-        time_start: str, time_finish: str, period: int, avg_time: int
-):
+def check_time(time_start, time_finish, avg_time):
 
+    formate = '%Y-%m-%d %H:%M:%S'
     tNow = datetime.utcnow()
-    if prev_days == 0 and prev_month == 0 and prev_year == 0:
-        formate = '%y-%m-%d %H:%M'
+    time_avg = avg_time.replace('_', ' ')
+    tStart = None
+    tFinish = None
 
-        if time_start:
-            if time_format(time_start, formate) == 'ok':
-                tStart = datetime.strptime(time_start, formate)
-            else:
-                info(f'Не верный формат времени начала "{time_start}".', start_dir)
-                return None
-            if time_finish:
-                if time_format(time_start, formate) == 'ok':
-                    tFinish = datetime.strptime(time_finish, formate)
-                else:
-                    info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
-                    return None
+    if time_avg == '1 minute':
+        avg_time_datetime = relativedelta(minutes=1)
+        if not time_start:
+            tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+            tStart = tFinish - relativedelta(days=1)
 
-                if tFinish - timedelta(minutes=avg_time) < tStart:
-                    info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
-                         f'или время осреднения данных "{avg_time}".', start_dir)
-                    return None
-            else:
-                tFinish = tNow.replace(second=0, microsecond=0)
-        else:
-            if period < avg_time:
-                info(f'Не верно задан период "{period}" и время осреднения данных "{avg_time}".'
-                     f' Врямя осредения должно быть меньше периода.', start_dir)
-                return None
+    elif time_avg == '1 hour':
+        avg_time_datetime = relativedelta(hours=1)
+        if not time_start:
+            tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+            tStart = tFinish - relativedelta(days=1)
 
-            elif avg_time > 1440 * 2:
-                info(f'Не верно задано время осреднения данных "{avg_time}".'
-                     f' Врямя осредения должно быть меньше 2880 минут (48 часов)ю', start_dir)
-                return None
+    elif time_avg == '1 day':
+        avg_time_datetime = relativedelta(days=1)
+        if not time_start:
+            tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+            tStart = tFinish - relativedelta(days=1)
 
-            # tNow = datetime.utcnow()
-            if not time_finish:
-                tFinish = tNow - timedelta(minutes=avg_time) + (datetime.min - tNow) % timedelta(minutes=avg_time)
-                tStart = tFinish - timedelta(minutes=period)
+    elif time_avg == '1 month':
+        avg_time_datetime = relativedelta(months=1)
+        if not time_start:
+            tFinish = tNow.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            tStart = tFinish - relativedelta(months=1)
 
-            else:
-                tFinish = datetime.strptime(time_finish, '%Y-%m-%d %H:%M')
-                tStart = tFinish - timedelta(minutes=period)
+    elif time_avg == '1 year':
+        avg_time_datetime = relativedelta(years=1)
+        if not time_start:
+            tFinish = tNow.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            tStart = tFinish - relativedelta(years=1)
 
-    elif prev_days != 0 and prev_month == 0 and prev_year == 0:
-        tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - relativedelta(days=prev_days)
-    elif prev_days == 0 and prev_month != 0 and prev_year == 0:
-        tFinish = tNow.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - relativedelta(months=prev_month)
-    elif prev_days == 0 and prev_month == 0 and prev_year != 0:
-        tFinish = tNow.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - relativedelta(years=prev_year)
     else:
-        tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
-        tStart = tFinish - relativedelta(years=prev_year, months=prev_month, days=prev_days)
-
-    if tFinish - timedelta(minutes=avg_time) < tStart:
-        info(f'Не верно задан период "{period} мин." или время осреднения данных "{avg_time} мин.".'
-             f' Врямя осредения должно быть меньше периода осреднения данных.', start_dir)
         return None
 
-    tStart_func = tStart
-    # print(tStart, tFinish)
-    return tStart_func, tStart, tFinish
+    if time_start:
+        if len(time_start) < 18:
+            time_start += ':00'
+        if time_format(time_start, formate) == 'ok':
+            tStart = datetime.strptime(time_start, formate)
+        else:
+            info(f'Не верный формат времени начала "{time_start}".', start_dir)
+            return None
+        if time_finish:
+            if len(time_finish) < 18:
+                time_finish += ':00'
+            if time_format(time_start, formate) == 'ok':
+                tFinish = datetime.strptime(time_finish, formate)
+            else:
+                info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
+                return None
+            if tFinish - avg_time_datetime < tStart:
+                info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
+                     f'или время осреднения данных "{time_avg}".', start_dir)
+                return None
+        else:
+            tFinish = tNow.replace(second=0, microsecond=0)
+    return tStart, tFinish
+
+
+def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: str, median_id: int):
+
+    tNow = datetime.utcnow()
+    formate = '%Y-%m-%d %H:%M:%S'
+    tStart = time_start
+    tFinish = time_finish
+
+    time_avg = avg_time.replace('_', ' ')
+
+    if time_avg == '1 minute':
+        avg_time_datetime = relativedelta(minutes=1)
+        request_period = relativedelta(days=1)
+        table_in_data = table_in_data_1_minute
+        table_out_data = table_in_data_1_hour
+        format_section_name = '%Y_%m_%d'
+        request_parameter = request_data_sens_minute.format(PERIOD='minute', INTERVAL=time_avg,
+                                                            WIND=wind_id, COUNT=count_id, ZNK=znk)
+        request_group = sql_group_sensors.format(NO_MINUTE='')
+        # if not time_start:
+        #     tFinish = tNow.replace(hour=0, minute=0, second=0, microsecond=0)
+        #     tStart = tFinish - relativedelta(days=1)
+
+    elif time_avg == '1 hour':
+        avg_time_datetime = relativedelta(hours=1)
+        request_period = relativedelta(days=1)
+        table_in_data = table_in_data_1_hour
+        table_out_data = table_in_data_1_day
+        format_section_name = '%Y_%m_%d'
+        request_parameter = request_data_sens.format(PERIOD='hour', INTERVAL=time_avg,
+                                                     WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
+        request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
+        # if not time_start:
+        tFinish = tFinish.replace(minute=0, second=0, microsecond=0)
+        tStart = tStart.replace(minute=0, second=0, microsecond=0)
+
+    elif time_avg == '1 day':
+        avg_time_datetime = relativedelta(days=1)
+        request_period = relativedelta(days=1)
+        table_in_data = table_in_data_1_day
+        table_out_data = table_in_data_1_month
+        format_section_name = '%Y_%m_%d'
+        request_parameter = request_data_sens.format(PERIOD='day', INTERVAL=time_avg,
+                                                     WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
+        request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
+        # if not time_start:
+        tFinish = tFinish.replace(hour=0, minute=0, second=0, microsecond=0)
+        tStart = tStart.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    elif time_avg == '1 month':
+        avg_time_datetime = relativedelta(months=1)
+        request_period = relativedelta(months=1)
+        table_in_data = table_in_data_1_month
+        table_out_data = table_in_data_1_year
+        format_section_name = '%Y_%m'
+        request_parameter = request_data_sens.format(PERIOD='month', INTERVAL=time_avg,
+                                                     WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
+        request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
+        # if not time_start:
+        tFinish = tFinish.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        tStart = tStart.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    elif time_avg == '1 year':
+        avg_time_datetime = relativedelta(years=1)
+        request_period = relativedelta(years=1)
+        table_in_data = table_in_data_1_year
+        table_out_data = table_out_data_year
+        format_section_name = '%Y'
+        request_parameter = request_data_sens.format(PERIOD='year', INTERVAL=time_avg,
+                                                     WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
+        request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
+        # if not time_start:
+        tFinish = tFinish.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        tStart = tStart.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    else:
+        return None
+
+    # if time_start:
+    #     if len(time_start) < 18:
+    #         time_start += ':00'
+    #     if time_format(time_start, formate) == 'ok':
+    #         tStart = datetime.strptime(time_start, formate)
+    #     else:
+    #         info(f'Не верный формат времени начала "{time_start}".', start_dir)
+    #         return None
+    #     if time_finish:
+    #         if len(time_finish) < 18:
+    #             time_finish += ':00'
+    #         if time_format(time_start, formate) == 'ok':
+    #             tFinish = datetime.strptime(time_finish, formate)
+    #         else:
+    #             info(f'Не верный формат времени окончания "{time_finish}".', start_dir)
+    #             return None
+    #         if tFinish - avg_time_datetime < tStart:
+    #             info(f'Не верно заданo время начала "{time_start}" или время окончания "{time_finish}" '
+    #                  f'или время осреднения данных "{avg_time}".', start_dir)
+    #             return None
+    #     else:
+    #         tFinish = tNow.replace(second=0, microsecond=0)
+
+    period_times_tmp = []
+    tmp = tStart
+    while tmp < tFinish:
+
+        tmp1 = tmp
+
+        if not period_times_tmp:
+            tmp = tmp + avg_time_datetime
+            if time_avg == '1 minute' or time_avg == '1 hour' or time_avg == '1 day':
+                tmp = tmp.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif time_avg == '1 month':
+                tmp = tmp.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            elif time_avg == '1 year':
+                tmp = tmp.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                return
+            tmp2 = tmp
+            tmp = tmp - avg_time_datetime
+        else:
+            tmp2 = tmp + avg_time_datetime
+        tmp = tmp + request_period
+        if tmp >= tFinish:
+            tmp = tFinish
+
+        period_times_tmp.append([tmp1, tmp, tmp2.strftime(format_section_name),
+                                tmp2.strftime(formate), (tmp2 + request_period).strftime(formate)])
+    period_times = []
+    for x in period_times_tmp:
+        s = x[0]
+        f = x[1]
+        while s < f:
+            s1 = s
+            s = s + avg_time_datetime
+            period_times.append([s1, s, x[2], x[3], x[4]])
+
+    return period_times, time_avg, table_in_data, table_out_data, \
+        formate, request_parameter, request_group, tStart, tFinish
+
+
+def auto_period_avg(start, finish, avg_time, auto):
+    period_avg_time = []
+    if auto.lower() == 'yes':
+        day_start = start.day
+        month_start = start.month
+        year_start = start.year
+        day_finish = finish.day
+        month_finish = finish.month
+        year_finish = finish.year
+        if day_start == day_finish and month_start == month_finish and year_start == year_finish:
+            period_avg_time = ['1_minute']
+        elif year_start != year_finish:
+            if avg_time == '1_minute':
+                period_avg_time = ['1_minute', '1_hour', '1_day', '1_month', '1_year']
+            elif avg_time == '1_hour':
+                period_avg_time = ['1_hour', '1_day', '1_month', '1_year']
+            elif avg_time == '1_day':
+                period_avg_time = ['1_day', '1_month', '1_year']
+            elif avg_time == '1_month':
+                period_avg_time = ['1_month', '1_year']
+            elif avg_time == '1_year':
+                period_avg_time = ['1_year']
+        elif month_start != month_finish:
+            period_avg_time = ['1_minute', '1_hour', '1_day', '1_month']
+            if avg_time == '1_minute':
+                period_avg_time = ['1_minute', '1_hour', '1_day', '1_month']
+            elif avg_time == '1_hour':
+                period_avg_time = ['1_hour', '1_day', '1_month']
+            elif avg_time == '1_day':
+                period_avg_time = ['1_day', '1_month']
+            elif avg_time == '1_month':
+                period_avg_time = ['1_month']
+        elif day_start != day_finish:
+            if avg_time == '1_minute':
+                period_avg_time = ['1_minute', '1_hour', '1_day']
+            elif avg_time == '1_hour':
+                period_avg_time = ['1_hour', '1_day']
+            elif avg_time == '1_day':
+                period_avg_time = ['1_day']
+    else:
+        period_avg_time = [avg_time]
+    return period_avg_time
 
 
 def values_out(
-        values, values_exel, source_id, measurand_id, measurand_label,
-        method_processing, time_obs, value_data, value_count
+        values, values_exel, source_id, measurand_id,
+        method_processing, time_interval, time_obs, value_data
 ):
 
-    for parameter, value in zip(method_processing, value_data):
-        value_float = ''
-        value_text = ''
-        if type(value) == float:
-            value_float = value
-            if type(values_exel) == list:
-                values_exel.append([time_obs, source_id, measurand_id, measurand_label, parameter, value, value_count])
-        else:
-            value_text = value
-        if type(values) == str:
-            if values:
-                values += ', '
-            time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
-            values += sql_value_pattern.format(
-                SOURCE_ID=source_id, MEASURAND_ID=measurand_id,
-                METHOD_PROCESSING=sql_select_id_method_processing.format(
-                    AND='', LABEL='label', NOT='', LABEL_MEASURAND=parameter
-                ),
-                TIME_OBS=time_obs, TIME_REC=time_rec, VALUE_FLOAT=value_float, VALUE_TEXT=value_text, COUNT=value_count
-            )
+    # for parameter, value in zip(method_processing, value_data):
+    value_float = 'NULL'
+    value_text = 'NULL'
+    if type(value_data) == float or type(value_data) == int:
+        value_float = f"'{{{value_data}}}'"
+        if type(values_exel) == list:
+            values_exel.append([time_obs, source_id, measurand_id, method_processing, value_data])
+    else:
+        value_text = f"'{{{value_data}}}'"
+    if type(values) == str:
+        if values:
+            values += ', '
+        time_rec = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
+        values += sql_value_pattern.format(
+            SOURCE_ID=source_id, MEASURAND_ID=measurand_id,
+            METHOD_PROCESSING=method_processing,
+            TIME_INTERVAL=time_interval,
+            TIME_OBS=time_obs, TIME_REC=time_rec, VALUE_FLOAT=value_float, VALUE_TEXT=value_text
+        )
 
     return values, values_exel
 
 
-def conditions(source_id: list,  measurand_id: list, no_source_id: list,
-               no_measurand_id: list, measurand_label: list, no_measurand_label: list):
-    condition = ''
-    column = ''
-    denial = ''
-
-    z = 0
-    for k in [source_id, measurand_id, no_source_id, no_measurand_id, measurand_label, no_measurand_label]:
-        ids = ''
-        if k[0]:
-            if z <= 3:
-                if z <= 1:
-                    denial = ''
-                    if z == 0:
-                        column = 'source_id'
-                    else:
-                        column = 'measurand_id'
-                elif z <= 3:
-                    denial = 'NOT'
-                    if z == 2:
-                        column = 'source_id'
-                    else:
-                        column = 'measurand_id'
-
-                for n in k:
-                    if ids:
-                        ids += f', {n}'
-                    else:
-                        ids = f'{n}'
-
-                if condition:
-                    condition += sql_id_condition.format(AND='AND', COLUMN=column, NOT=denial, ID_COLUMN=ids)
-                else:
-                    condition = sql_id_condition.format(AND='', COLUMN=column, NOT=denial, ID_COLUMN=ids)
+def conditions(source_id: str,  measurand_id: str, no_source_id: str,
+               no_measurand_id: str):
+    condition = None
+    column = ['source_id', 'measurand_id']
+    no = ['', 'not']
+    n = 0
+    k = 0
+    for ids in [source_id, measurand_id, no_source_id, no_measurand_id]:
+        if ids:
+            if condition:
+                condition += sql_id_condition.format(AND='and', COLUMN=column[n], NOT=no[k], ID_COLUMN=ids)
             else:
-                column = 'label'
-                if z == 4:
-                    denial = ''
-                    label = ''
-                    for n in k:
-                        if label:
-                            label += sql_label_measurands.format(AND='OR', LABEL=column, NOT=denial,
-                                                                 LABEL_MEASURAND=n)
-                        else:
-                            label = '(' + sql_label_measurands.format(AND='', LABEL=column, NOT=denial,
-                                                                      LABEL_MEASURAND=n)
-                    if label:
-                        if condition:
-                            condition += f' and {label}) '
-                        else:
-                            condition = f'{label}) '
-                else:
-                    denial = 'NOT'
-                    for n in k:
-                        if condition:
-                            condition += sql_label_measurands.format(AND='AND', LABEL=column, NOT=denial,
-                                                                     LABEL_MEASURAND=n)
-                        else:
-                            condition = sql_label_measurands.format(AND='', LABEL=column, NOT=denial,
-                                                                    LABEL_MEASURAND=n)
-        z += 1
+                condition = sql_id_condition.format(AND='', COLUMN=column[n], NOT=no[k], ID_COLUMN=ids)
+        n += 1
+        if n > 1:
+            k += 1
+            n = 0
+
     return condition
-
-
-
-def sql_request(
-        time_start='', time_finish='', period=1440, avg_time=1, source_id=None, measurand_id=None, no_source_id=None,
-        no_measurand_id=None, measurand_label=None, no_measurand_label=None, sql_table=None, exel=None,
-        col_string=3000, timeout=60, prev_days=0, prev_month=0, prev_year=0
-):
-    if exel == 1:
-        values_exel = []
-    else:
-        values_exel = None
-    if sql_table == 1:
-        values = ''
-    else:
-        values = None
-    tNow = datetime.utcnow()
-    times = check_time(
-        time_start=time_start, time_finish=time_finish, period=period, avg_time=avg_time,
-        prev_days=prev_days, prev_month=prev_month, prev_year=prev_year
-    )
-    if not times:
-        return
-    tStart_func, tStart, tFinish = times
-
-    for no_label in no_measurand_label:
-        if no_label:
-            if no_label not in measurand_labels_not_avg:
-                measurand_labels_not_avg.append(no_label)
-
-    measurand_label_wind = []
-    if measurand_label[0]:
-        measurand_label_wind = measurand_label.copy()
-    measurand_labels_not_avg_wind = measurand_labels_not_avg.copy()
-    for label_wind in measurand_winds_label:
-        for label in label_wind:
-            if label not in measurand_label:
-                measurand_label_wind.append(label)
-            if label not in measurand_labels_not_avg:
-                measurand_labels_not_avg.append(label)
-
-    condition_sensor_wind = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
-                                       no_measurand_id=no_measurand_id, measurand_label=measurand_label_wind,
-                                       no_measurand_label=measurand_labels_not_avg_wind
-                                       )
-    condition_sensor = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
-                                  no_measurand_id=no_measurand_id, measurand_label=measurand_label,
-                                  no_measurand_label=measurand_labels_not_avg
-                                  )
-
-    poligon_db = ConnectionManager(
-        ip=DB_POLIGON_HOST, port=DB_POLIGON_PORT, db_name=DB_POLIGON_NAME,
-        user=DB_POLIGON_USER, password=DB_POLIGON_PASSWD, timeout=timeout
-    )
-    try:
-        while tStart <= tFinish - timedelta(minutes=avg_time):
-            time_beginning = tStart.strftime('%Y-%m-%d %H:%M:%S')
-            time_end = (tStart + timedelta(minutes=avg_time)).strftime('%Y-%m-%d %H:%M:%S')
-            table_section = (tStart + timedelta(minutes=avg_time)).strftime('%Y_%m_%d')
-            print(table_section)        # НЕ ЗАБЫТЬ ЗАКОМЕНТИРОВАТЬ!!!!!!!!!
-            poligon_db.requests(
-                parameter=sql_parameter_no_wind, tabel=table_request_sensor,
-                condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
-                                                       TIME_END=time_end, AND='AND', MEASURAND=condition_sensor),
-                group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
-            )
-            # print(poligon_db.result)
-
-            if poligon_db.result:
-                # method_processing = [
-                #     mesurand_label_method_processing_min,
-                #     mesurand_label_method_processing_max,
-                #     mesurand_label_method_processing_avg
-                # ]
-                # Формирование информации для записи и передачи
-                for x in poligon_db.result:
-                    # print(x)
-                    if type(x[3]) == float or type(x[4]) == float or type(x[5]) == float:
-                        method_processing = [
-                            mesurand_label_method_processing_min,
-                            mesurand_label_method_processing_max,
-                            mesurand_label_method_processing_avg
-                        ]
-                        val = [x[3], x[4], x[5]]
-                    else:
-                        method_processing = [mesurand_label_method_processing_acc]
-                        val = ''
-                        for y in x[6]:
-                            if y not in val:
-                                if val:
-                                    val += f', {y}'
-                                else:
-                                    val = y
-                    # print(val)
-                    values, values_exel = values_out(
-                        values=values, values_exel=values_exel, source_id=x[0], measurand_id=x[2],
-                        measurand_label=x[1], method_processing=method_processing, time_obs=time_end,
-                        value_data=val, value_count=x[7]
-                    )
-
-            # print(values)
-            poligon_db.requests(
-                parameter=sql_parameter_wind, tabel=table_request_sensor,
-                condition=sql_condition_sensors.format(TIME_BEGIN=time_beginning,
-                                                       TIME_END=time_end, AND='AND',
-                                                       MEASURAND=condition_sensor_wind),
-                group=sql_group_sensors, group_having=sql_having_sensor, x=col_string
-            )
-            # print(poligon_db.result)
-            if poligon_db.result:
-                sens_wind = {}
-                for x in poligon_db.result:
-                    if x[0] in sens_wind:
-                        sens_wind[x[0]][x[1]] = [x[2], x[3], x[4], x[5]]
-                    else:
-                        sens_wind[x[0]] = {x[1]: [x[2], x[3], x[4], x[5]]}
-                # print(sens_wind)
-            #
-                for sensor_id in sens_wind.keys():
-                    for wind in measurand_winds_label:    # Если ветер то обрабатываем его
-
-                        max_value = ''
-                        min_value = ''
-                        avg_wind_vector_speed = ''
-                        avg_wind_vector_direction = ''
-                        avg_wind_speed = ''
-                        avg_wind_direction = ''
-                        method_processing_speed = []
-                        method_processing_direction = []
-
-                        if set(wind).issubset(sens_wind[sensor_id].keys()):
-
-                            method_processing_speed = [mesurand_label_method_processing_min,
-                                                       mesurand_label_method_processing_max,
-                                                       mesurand_label_method_processing_avg,
-                                                       mesurand_label_method_processing_vec_avg]
-                            method_processing_direction = [mesurand_label_method_processing_avg,
-                                                           mesurand_label_method_processing_vec_avg]
-
-
-                            avg_wind_speed, avg_wind_direction = get_avg_direction(
-                                sens_wind[sensor_id][wind[0]][1], sens_wind[sensor_id][wind[1]][1]
-                            )
-                            avg_wind_vector_speed, avg_wind_vector_direction = get_avg_direction_vector(
-                                sens_wind[sensor_id][wind[0]][1], sens_wind[sensor_id][wind[1]][1]
-                            )
-
-                            max_value = round(max(sens_wind[sensor_id][wind[0]][1]), znk)
-                            min_value = round(min(sens_wind[sensor_id][wind[0]][1]), znk)
-                            print(time_end, sensor_id, avg_wind_speed,  avg_wind_direction, avg_wind_vector_speed,
-                                  avg_wind_vector_direction, max_value, min_value)
-
-                            # del sens[sensor_id][wind[0]]
-                            # del sens[sensor_id][wind[1]]
-
-                        elif wind[0] in list(sens_wind[sensor_id].keys()):
-                            method_processing_speed = [mesurand_label_method_processing_min,
-                                                       mesurand_label_method_processing_max,
-                                                       mesurand_label_method_processing_avg]
-
-                            avg_wind_speed = round(
-                                sum(sens_wind[sensor_id][wind[0]][1])/len(sens_wind[sensor_id][wind[0]][1]), znk
-                            )
-                            max_value = round(max(sens_wind[sensor_id][wind[0]][1]), znk)
-                            min_value = round(min(sens_wind[sensor_id][wind[0]][1]), znk)
-                            print(time_end, sensor_id, avg_wind_speed, max_value, min_value)
-
-                            # del sens[sensor_id][wind[0]]
-
-                        elif wind[1] in list(sens_wind[sensor_id].keys()):
-                            method_processing_direction = [mesurand_label_method_processing_avg]
-                            avg_wind_direction = round(get_avg_direction(sens_wind[sensor_id][wind[0]], 1)[0], znk)
-                            print(time_end, sensor_id, avg_wind_direction)
-
-                        if method_processing_speed:
-                            values, values_exel = values_out(
-                                values=values, values_exel=values_exel, source_id=sensor_id,
-                                measurand_id=sens_wind[sensor_id][wind[0]][0],
-                                measurand_label=wind[0], method_processing=method_processing_speed,
-                                time_obs=time_end, value_data=[
-                                    min_value, max_value, avg_wind_speed, avg_wind_vector_speed
-                                ], value_count=sens_wind[sensor_id][wind[0]][3]
-                            )
-                        if method_processing_direction:
-                            values, values_exel = values_out(
-                                values=values, values_exel=values_exel, source_id=sensor_id,
-                                measurand_id=sens_wind[sensor_id][wind[1]][0],
-                                measurand_label=wind[1], method_processing=method_processing_direction,
-                                time_obs=time_end, value_data=[avg_wind_direction, avg_wind_vector_direction],
-                                value_count=sens_wind[sensor_id][wind[1]][3]
-                            )
-            tStart = tStart + timedelta(minutes=avg_time)
-            # print(values)
-
-        if values_exel:
-            add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
-        poligon_db.disconnect()
-
-        return tStart_func, tFinish, avg_time, datetime.utcnow() - tNow
-    except KeyboardInterrupt:
-        poligon_db.disconnect()

@@ -47,19 +47,19 @@ def add_new_sheet(book, sheet_name, avd_time, time_start, time_finish, add_data,
     else:
         sheet_name = f'{sheet_name}, {n + 1}'
         sheet = book.create_sheet(sheet_name)
-    sheet.merge_cells('A1:G1')
+    sheet.merge_cells('A1:F1')
     sheet['A1'] = f'Осредненение данных за {avd_time} мин. с "{time_start}" по "{time_finish}".'
     sheet['A1'].alignment = Alignment(horizontal='center')
     sheet['A1'].font = Font(bold='bold', italic=True, size=12)
-    sheet.append(['Time_obs', 'Sourse_id', 'Measurand_id', 'Measurand_label',
+    sheet.append(['Time_obs', 'Sourse_id', 'Measurand_id', # 'Measurand_label',
                   'Method_processing', 'Value', 'Count'])
     sheet.column_dimensions['A'].width = 20
     sheet.column_dimensions['B'].width = 10
     sheet.column_dimensions['C'].width = 18
-    sheet.column_dimensions['D'].width = 20
-    sheet.column_dimensions['E'].width = 23
+    # sheet.column_dimensions['D'].width = 20
+    sheet.column_dimensions['D'].width = 23
+    sheet.column_dimensions['E'].width = 11
     sheet.column_dimensions['F'].width = 11
-    sheet.column_dimensions['G'].width = 11
     sheet.row_dimensions[1].font = Font(bold=True)
     # else:
     #     sheet = book[f'{sheet_name}, {n}']
@@ -128,10 +128,10 @@ def add_exel_files(data: list, avd_time: int, time_start, time_finish, time_begi
             row_new = row
 
     # row_new = sheet.max_row
-    set_border(sheet, f'A{row}:G{row_new}', row, row_new)
+    set_border(sheet, f'A{row}:F{row_new}', row, row_new)
 
     # filters = sheet.auto_filter
-    filters.ref = f"A2:G{row_new}"
+    filters.ref = f"A2:F{row_new}"
     info(f'Добавлены данные с "{time_start}" по "{time_finish}" в файл.', start_dir)
     # return book
     book.save(file_name)
