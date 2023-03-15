@@ -15,10 +15,10 @@ if __name__ == '__main__':
 
     # Раскоментировать и ввести необходимые параметры для ручного ввода
     #
-    # start_time = '2023-01-05 00:00'     # Формат 'YY-MM-DD HH:mm'
-    # finish_time = '2023-02-01 00:00'    # Формат 'YY-MM-DD HH:mm'
-    # avg_time = '1_minute'
-    # source_id = [39]
+    # start_time = '2023-01-30 00:00'     # Формат 'YY-MM-DD HH:mm'
+    # finish_time = '2023-01-31 00:00'    # Формат 'YY-MM-DD HH:mm'
+    # avg_time = '1_day'
+    # source_id = [14]
     # measurand_id = [52]
     # no_source_id = [1,2,3]
     # no_measurand_id = [52, 181]
@@ -31,8 +31,21 @@ if __name__ == '__main__':
         no_measurand=no_measurand_id, sql_table=sql_table, exel=exel, col_string=col_string, timeout=timeout
     )
     if result:
-        info(
-            f'Выполнена обработка данных с "{result[0]}" по "{result[1]}", '
-            f'осреденеие данных "{result[2]} мин.", '
-            f'затраченное время: "{result[3]}".', start_dir
-        )
+        avg_time = ''
+        for n in result[2]:
+            if avg_time:
+                avg_time += f', {n}'
+            else:
+                avg_time += f'{n}'
+        if result[4]:
+            info(
+                f'База данных не отвечает, '
+                f'осреденеие данных "{avg_time}", '
+                f'затраченное время: "{result[3]}".', start_dir
+            )
+        else:
+            info(
+                f'Выполнена обработка данных с "{result[0]}" по "{result[1]}", '
+                f'осреденеие данных "{avg_time}", '
+                f'затраченное время: "{result[3]}".', start_dir
+            )

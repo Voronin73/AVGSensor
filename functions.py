@@ -62,7 +62,7 @@ def arguments():
         metavar=': количество получаемых строк'
     )
     parser_group.add_argument(
-        '-t', '--timeout', type=int, default=180,
+        '-t', '--timeout', type=int, default=300,
         help='Таймаут подключения и получения данных от базы данных в секундах (по умолчанию 60 секунд).',
         metavar=': таймаут'
     )
@@ -257,7 +257,7 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_period = relativedelta(months=1)
         table_in_data = table_in_data_1_month
         table_out_data = table_in_data_1_year
-        format_section_name = '%Y_%m'
+        format_section_name = '%Y_%m_%d'
         request_parameter = request_data_sens.format(PERIOD='month', INTERVAL=time_avg,
                                                      WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')
@@ -269,7 +269,7 @@ def create_info(time_start, time_finish, avg_time: str, wind_id: str, count_id: 
         request_period = relativedelta(years=1)
         table_in_data = table_in_data_1_year
         table_out_data = table_out_data_year
-        format_section_name = '%Y'
+        format_section_name = '%Y_%m_%d'
         request_parameter = request_data_sens.format(PERIOD='year', INTERVAL=time_avg,
                                                      WIND=wind_id, COUNT=count_id, MEDIAN=median_id, ZNK=znk)
         request_group = sql_group_sensors.format(NO_MINUTE=', method_processing')

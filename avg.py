@@ -166,131 +166,139 @@ def avg(
 
 
             for times in period_times:
-                tStart, tFinish, table_section_date, section_start_condition, section_end_condition = times
+                n = 0
+                while True:
+                    tStart, tFinish, table_section_date, section_start_condition, section_end_condition = times
 
-                # Формирование запроса для получения данных
-                time_start = tStart.strftime(formate)
-                time_finish = tFinish.strftime(formate)
+                    # Формирование запроса для получения данных
+                    time_start = tStart.strftime(formate)
+                    time_finish = tFinish.strftime(formate)
 
-                condition = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
-                                       no_measurand_id=no_measurand_id)
-                # Формируем условие запроса
-                if condition:
-                    condition = request_condition_sensors.format(
-                        TIME_BEGIN=time_start, TIME_END=time_finish, AND="and", MEASURAND=condition
-                    )
-                else:
-                    condition = request_condition_sensors.format(
-                        TIME_BEGIN=time_start, TIME_END=time_finish, AND="", MEASURAND=""
-                    )
-                db.requests(parameter=request_parameter, tabel=f'{scheme_data}.{table_in_date}', condition=condition,
-                            group=request_group, group_having=request_group_having, x=col_string)
+                    condition = conditions(source_id=source_id, measurand_id=measurand_id, no_source_id=no_source_id,
+                                           no_measurand_id=no_measurand_id)
+                    # Формируем условие запроса
+                    if condition:
+                        condition = request_condition_sensors.format(
+                            TIME_BEGIN=time_start, TIME_END=time_finish, AND="and", MEASURAND=condition
+                        )
+                    else:
+                        condition = request_condition_sensors.format(
+                            TIME_BEGIN=time_start, TIME_END=time_finish, AND="", MEASURAND=""
+                        )
+                    db.requests(parameter=request_parameter, tabel=f'{scheme_data}.{table_in_date}', condition=condition,
+                                group=request_group, group_having=request_group_having, x=col_string)
 
-                if db.result:
-                    wind_data = {}
-                    for x in db.result:
+                    if db.result:
+                        wind_data = {}
+                        for x in db.result:
 
-                        time_obs = x[0].strftime(formate)
-                        k = 0
-                        if len(x) == 11:
-                            k = x[10]
-                        # Количество данных используемое в обработке пишем в запрос
-                        if x[9]:
-                            if avg_time == '1_minute' or \
-                                    k == method_processing[mesurand_label_method_processing_count]:
+                            time_obs = x[0].strftime(formate)
+                            k = 0
+                            if len(x) == 11:
+                                k = x[10]
+                            # Количество данных используемое в обработке пишем в запрос
+                            if x[9]:
+                                if avg_time == '1_minute' or \
+                                        k == method_processing[mesurand_label_method_processing_count]:
+                                    values, values_exel = values_out(
+                                        values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
+                                        method_processing=method_processing[mesurand_label_method_processing_count],
+                                        time_interval=time_interval_id, time_obs=time_obs, value_data=x[9])
+
+                            if x[6]:
                                 values, values_exel = values_out(
                                     values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                    method_processing=method_processing[mesurand_label_method_processing_count],
-                                    time_interval=time_interval_id, time_obs=time_obs, value_data=x[9])
+                                    method_processing=method_processing[mesurand_label_method_processing_median],
+                                    time_interval=time_interval_id, time_obs=time_obs, value_data=x[6])
 
-                        if x[6]:
-                            values, values_exel = values_out(
-                                values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                method_processing=method_processing[mesurand_label_method_processing_median],
-                                time_interval=time_interval_id, time_obs=time_obs, value_data=x[6])
+                            if x[2] in wind_measurand_id_list.values():
+                                # Если ветер то пишем его в словарь для дальнейшей обработки
+                                for z in [
+                                    method_processing[mesurand_label_method_processing_avg],
+                                    method_processing[mesurand_label_method_processing_vec_avg],
+                                    method_processing[mesurand_label_method_processing_min],
+                                    method_processing[mesurand_label_method_processing_max]
+                                ]:
+                                    if avg_time == '1_minute':
 
-                        if x[2] in wind_measurand_id_list.values():
-                            # Если ветер то пишем его в словарь для дальнейшей обработки
-                            for z in [
-                                method_processing[mesurand_label_method_processing_avg],
-                                method_processing[mesurand_label_method_processing_vec_avg],
-                                method_processing[mesurand_label_method_processing_min],
-                                method_processing[mesurand_label_method_processing_max]
-                            ]:
-                                if avg_time == '1_minute':
-
-                                    if wind_data:
-                                        if time_obs in wind_data.keys():
-                                            if x[1] in wind_data[time_obs].keys():
-                                                if x[2] in wind_data[time_obs][x[1]].keys():
-                                                    wind_data[time_obs][x[1]][x[2]][z] = x[8]
-                                                else:
-                                                    wind_data[time_obs][x[1]][x[2]] = {z: x[8]}
-                                            else:
-                                                wind_data[time_obs][x[1]] = {x[2]: {z: x[8]}}
-
-                                        else:
-                                            wind_data[time_obs] = {x[1]: {x[2]: {z: x[8]}}}
-                                    else:
-                                        wind_data = {time_obs: {x[1]: {x[2]: {z: x[8]}}}}
-                                else:
-                                    if z == k:
                                         if wind_data:
                                             if time_obs in wind_data.keys():
                                                 if x[1] in wind_data[time_obs].keys():
                                                     if x[2] in wind_data[time_obs][x[1]].keys():
-                                                        wind_data[time_obs][x[1]][x[2]][x[10]] = x[8]
+                                                        wind_data[time_obs][x[1]][x[2]][z] = x[8]
                                                     else:
-                                                        wind_data[time_obs][x[1]][x[2]] = {x[10]: x[8]}
+                                                        wind_data[time_obs][x[1]][x[2]] = {z: x[8]}
                                                 else:
-                                                    wind_data[time_obs][x[1]] = {x[2]: {x[10]: x[8]}}
+                                                    wind_data[time_obs][x[1]] = {x[2]: {z: x[8]}}
 
                                             else:
-                                                wind_data[time_obs] = {x[1]: {x[2]: {x[10]: x[8]}}}
+                                                wind_data[time_obs] = {x[1]: {x[2]: {z: x[8]}}}
                                         else:
-                                            wind_data = {time_obs: {x[1]: {x[2]: {x[10]: x[8]}}}}
+                                            wind_data = {time_obs: {x[1]: {x[2]: {z: x[8]}}}}
+                                    else:
+                                        if z == k:
+                                            if wind_data:
+                                                if time_obs in wind_data.keys():
+                                                    if x[1] in wind_data[time_obs].keys():
+                                                        if x[2] in wind_data[time_obs][x[1]].keys():
+                                                            wind_data[time_obs][x[1]][x[2]][x[10]] = x[8]
+                                                        else:
+                                                            wind_data[time_obs][x[1]][x[2]] = {x[10]: x[8]}
+                                                    else:
+                                                        wind_data[time_obs][x[1]] = {x[2]: {x[10]: x[8]}}
 
-                        if x[7][0]:
-                            # Если текст то обрабатываем и пишем в запрос
-                            val = ''
-                            for y in x[7]:
-                                for z in y:
-                                    if z not in val:
-                                        if val:
-                                            val += f', {z}'
-                                        else:
-                                            val = z
+                                                else:
+                                                    wind_data[time_obs] = {x[1]: {x[2]: {x[10]: x[8]}}}
+                                            else:
+                                                wind_data = {time_obs: {x[1]: {x[2]: {x[10]: x[8]}}}}
 
-                            values, values_exel = values_out(
-                                values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                method_processing=method_processing[mesurand_label_method_processing_set],
-                                time_interval=time_interval_id, time_obs=time_obs, value_data=val)
-                        if x[3]:
-                            if avg_time == '1_minute' or \
-                                    k == method_processing[mesurand_label_method_processing_min]:
+                            if x[7][0]:
+                                # Если текст то обрабатываем и пишем в запрос
+                                val = ''
+                                for y in x[7]:
+                                    for z in y:
+                                        if z not in val:
+                                            if val:
+                                                val += f', {z}'
+                                            else:
+                                                val = z
+
                                 values, values_exel = values_out(
                                     values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                    method_processing=method_processing[mesurand_label_method_processing_min],
-                                    time_interval=time_interval_id, time_obs=time_obs, value_data=x[3])
-                        if x[4]:
-                            if avg_time == '1_minute' or \
-                                    k == method_processing[mesurand_label_method_processing_max]:
-                                values, values_exel = values_out(
-                                    values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                    method_processing=method_processing[mesurand_label_method_processing_max],
-                                    time_interval=time_interval_id, time_obs=time_obs, value_data=x[4])
-                        if x[5]:
-                            if avg_time == '1_minute' or \
-                                    k == method_processing[mesurand_label_method_processing_avg]:
-                                values, values_exel = values_out(
-                                    values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
-                                    method_processing=method_processing[mesurand_label_method_processing_avg],
-                                    time_interval=time_interval_id, time_obs=time_obs, value_data=x[5])
+                                    method_processing=method_processing[mesurand_label_method_processing_set],
+                                    time_interval=time_interval_id, time_obs=time_obs, value_data=val)
+                            if x[3]:
+                                if avg_time == '1_minute' or \
+                                        k == method_processing[mesurand_label_method_processing_min]:
+                                    values, values_exel = values_out(
+                                        values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
+                                        method_processing=method_processing[mesurand_label_method_processing_min],
+                                        time_interval=time_interval_id, time_obs=time_obs, value_data=x[3])
+                            if x[4]:
+                                if avg_time == '1_minute' or \
+                                        k == method_processing[mesurand_label_method_processing_max]:
+                                    values, values_exel = values_out(
+                                        values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
+                                        method_processing=method_processing[mesurand_label_method_processing_max],
+                                        time_interval=time_interval_id, time_obs=time_obs, value_data=x[4])
+                            if x[5]:
+                                if avg_time == '1_minute' or \
+                                        k == method_processing[mesurand_label_method_processing_avg]:
+                                    values, values_exel = values_out(
+                                        values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
+                                        method_processing=method_processing[mesurand_label_method_processing_avg],
+                                        time_interval=time_interval_id, time_obs=time_obs, value_data=x[5])
 
-                    db.result = None
-                else:
-                    db.disconnect()
-                    return
+                        db.result = None
+                        break
+                    elif db.result_err == 'connection timeout':
+                        n += 1
+                        if n > 11:
+                            db.disconnect()
+                            return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, db.result_err
+                    else:
+                        db.disconnect()
+                        return
 
                 db.result = None
                 # Обработка данных ветра
@@ -453,13 +461,13 @@ def avg(
 
                     db.inserts(scheme_data, [table_out_data, table_section_date],
                                insert_parameter_values, values, description=f'{time_start} - {time_finish}')
-                    # values = ''
+                    values = ''
                 # if values_exel:
                 #     add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
                 #
 
 
         db.disconnect()
-        return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func
+        return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, None
     except KeyboardInterrupt:
         db.disconnect()
