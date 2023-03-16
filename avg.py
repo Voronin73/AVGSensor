@@ -1,4 +1,6 @@
 from settings import *
+from constants import start_dir
+from log_files import info
 from exel_files import add_exel_files
 from connection import ConnectionManager
 from functions import check_time, conditions, values_out, get_avg_direction, get_avg_direction_vector,\
@@ -188,8 +190,9 @@ def avg(
                     db.requests(parameter=request_parameter, tabel=f'{scheme_data}.{table_in_date}', condition=condition,
                                 group=request_group, group_having=request_group_having, x=col_string)
 
+                    wind_data = {}
                     if db.result:
-                        wind_data = {}
+
                         for x in db.result:
 
                             time_obs = x[0].strftime(formate)
@@ -297,154 +300,154 @@ def avg(
                             db.disconnect()
                             return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, db.result_err
                     else:
-                        db.disconnect()
-                        return
+                        info(f'Отсутствуют данные за период "{time_start} - {time_finish}."', start_dir)
+                        break
 
-                db.result = None
-                # Обработка данных ветра
-                for x in wind_data.keys():
-                    for k in wind_data[x].keys():
-                        for z in measurand_winds_label:
-                            if wind_measurand_id_list[z[0]] in wind_data[x][k].keys() and \
-                                   wind_measurand_id_list[z[1]] in wind_data[x][k].keys():
-                                if method_processing[mesurand_label_method_processing_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                    db.result = None
+                    # Обработка данных ветра
+                    for x in wind_data.keys():
+                        for k in wind_data[x].keys():
+                            for z in measurand_winds_label:
+                                if wind_measurand_id_list[z[0]] in wind_data[x][k].keys() and \
+                                       wind_measurand_id_list[z[1]] in wind_data[x][k].keys():
+                                    if method_processing[mesurand_label_method_processing_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(
-                                        sum(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_avg]]) /
-                                        len(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_avg]]), znk
-                                    )
+                                        wind_speed = round(
+                                            sum(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                [method_processing[mesurand_label_method_processing_avg]]) /
+                                            len(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                [method_processing[mesurand_label_method_processing_avg]]), znk
+                                        )
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                                if method_processing[mesurand_label_method_processing_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
+                                    if method_processing[mesurand_label_method_processing_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
 
-                                    wind_direction = get_avg_direction(
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]]
-                                        [method_processing[mesurand_label_method_processing_avg]]
-                                    )
+                                        wind_direction = get_avg_direction(
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]]
+                                            [method_processing[mesurand_label_method_processing_avg]]
+                                        )
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[1]],
-                                        method_processing=method_processing[mesurand_label_method_processing_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[1]],
+                                            method_processing=method_processing[mesurand_label_method_processing_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
-                                if method_processing[mesurand_label_method_processing_vec_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys() and \
-                                        method_processing[mesurand_label_method_processing_vec_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
+                                    if method_processing[mesurand_label_method_processing_vec_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys() and \
+                                            method_processing[mesurand_label_method_processing_vec_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
 
-                                    wind_speed, wind_direction = get_avg_direction_vector(
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                        [method_processing[mesurand_label_method_processing_vec_avg]],
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]]
-                                        [method_processing[mesurand_label_method_processing_vec_avg]]
-                                    )
+                                        wind_speed, wind_direction = get_avg_direction_vector(
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                            [method_processing[mesurand_label_method_processing_vec_avg]],
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]]
+                                            [method_processing[mesurand_label_method_processing_vec_avg]]
+                                        )
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_vec_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[1]],
-                                        method_processing=method_processing[mesurand_label_method_processing_vec_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[1]],
+                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
-                                if method_processing[mesurand_label_method_processing_max] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                                    if method_processing[mesurand_label_method_processing_max] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                           [method_processing[mesurand_label_method_processing_max]]),
-                                                       znk)
+                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_max]]),
+                                                           znk)
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_max],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_max],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                                if method_processing[mesurand_label_method_processing_min] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                                    if method_processing[mesurand_label_method_processing_min] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                           [method_processing[mesurand_label_method_processing_min]]),
-                                                       znk)
+                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_min]]),
+                                                           znk)
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_min],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_min],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                            elif wind_measurand_id_list[z[0]] in wind_data[x][k].keys():
+                                elif wind_measurand_id_list[z[0]] in wind_data[x][k].keys():
 
-                                if method_processing[mesurand_label_method_processing_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                                    if method_processing[mesurand_label_method_processing_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(
-                                        sum(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_avg]]) /
-                                        len(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_avg]]), znk
-                                    )
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        wind_speed = round(
+                                            sum(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                [method_processing[mesurand_label_method_processing_avg]]) /
+                                            len(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                [method_processing[mesurand_label_method_processing_avg]]), znk
+                                        )
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                                if method_processing[mesurand_label_method_processing_max] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                                    if method_processing[mesurand_label_method_processing_max] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                           [method_processing[mesurand_label_method_processing_max]]),
-                                                       znk)
+                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_max]]),
+                                                           znk)
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_max],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_max],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                                if method_processing[mesurand_label_method_processing_min] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
+                                    if method_processing[mesurand_label_method_processing_min] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                    wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                           [method_processing[mesurand_label_method_processing_min]]),
-                                                       znk)
+                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_min]]),
+                                                           znk)
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[0]],
-                                        method_processing=method_processing[mesurand_label_method_processing_min],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[0]],
+                                            method_processing=method_processing[mesurand_label_method_processing_min],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
-                            elif wind_measurand_id_list[z[1]] in wind_data[x][k].keys():
+                                elif wind_measurand_id_list[z[1]] in wind_data[x][k].keys():
 
-                                if method_processing[mesurand_label_method_processing_avg] in \
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
+                                    if method_processing[mesurand_label_method_processing_avg] in \
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]].keys():
 
-                                    wind_direction = get_avg_direction(
-                                        wind_data[x][k][wind_measurand_id_list[z[1]]]
-                                        [method_processing[mesurand_label_method_processing_avg]]
-                                    )
+                                        wind_direction = get_avg_direction(
+                                            wind_data[x][k][wind_measurand_id_list[z[1]]]
+                                            [method_processing[mesurand_label_method_processing_avg]]
+                                        )
 
-                                    values, values_exel = values_out(
-                                        values=values, values_exel=values_exel, source_id=k,
-                                        measurand_id=wind_measurand_id_list[z[1]],
-                                        method_processing=method_processing[mesurand_label_method_processing_avg],
-                                        time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
+                                        values, values_exel = values_out(
+                                            values=values, values_exel=values_exel, source_id=k,
+                                            measurand_id=wind_measurand_id_list[z[1]],
+                                            method_processing=method_processing[mesurand_label_method_processing_avg],
+                                            time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
                 if values:
                     if f'{scheme_data}.{table_out_data}_{table_section_date}' not in table_exist:

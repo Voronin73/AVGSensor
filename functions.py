@@ -33,13 +33,13 @@ def arguments():
 
     parser_group.add_argument(
         '-s', '--start_time', type=str, default='',
-        help='Время начала осреднения данных в формате "YY-MM-DD HH:mm". '
+        help='Время начала осреднения данных в формате "YYYY-MM-DD HH:mm:ss". '
              'Не обязательный параметер.',
         metavar=': дата и время начала осреднения'
     )
     parser_group.add_argument(
         '-f', '--finish_time', type=str, default='',
-        help='Время окончания осреднения данных в формате "YY-MM-DD HH:mm". '
+        help='Время окончания осреднения данных в формате "YYYY-MM-DD HH:mm:ss". '
              'Если параметер не введен используется текущее время.',
         metavar=': дата и время окончания осреднения'
     )
