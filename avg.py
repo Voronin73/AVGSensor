@@ -471,6 +471,6 @@ def avg(
 
 
         db.disconnect()
-        return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, None
+        return tSTART, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, None
     except KeyboardInterrupt:
         db.disconnect()
