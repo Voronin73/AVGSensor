@@ -337,7 +337,8 @@ def avg(
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[1]],
-                                            method_processing=method_processing[mesurand_label_method_processing_avg],
+                                            method_processing=
+                                            method_processing[mesurand_label_method_processing_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
                                     if method_processing[mesurand_label_method_processing_vec_avg] in \
@@ -355,21 +356,24 @@ def avg(
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[0]],
-                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
+                                            method_processing=
+                                            method_processing[mesurand_label_method_processing_vec_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[1]],
-                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
+                                            method_processing=
+                                            method_processing[mesurand_label_method_processing_vec_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
                                     if method_processing[mesurand_label_method_processing_max] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                               [method_processing[mesurand_label_method_processing_max]]),
-                                                           znk)
+                                        wind_speed = round(max(
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                            [method_processing[mesurand_label_method_processing_max]]
+                                        ), znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -380,9 +384,10 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_min] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                               [method_processing[mesurand_label_method_processing_min]]),
-                                                           znk)
+                                        wind_speed = round(min(
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                            [method_processing[mesurand_label_method_processing_min]]
+                                        ), znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -410,9 +415,10 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_max] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                               [method_processing[mesurand_label_method_processing_max]]),
-                                                           znk)
+                                        wind_speed = round(max(
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                            [method_processing[mesurand_label_method_processing_max]]
+                                        ),  znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -423,9 +429,10 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_min] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                                               [method_processing[mesurand_label_method_processing_min]]),
-                                                           znk)
+                                        wind_speed = round(min(
+                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                            [method_processing[mesurand_label_method_processing_min]]
+                                        ),  znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
