@@ -298,7 +298,8 @@ def avg(
                         n += 1
                         if n > 11:
                             db.disconnect()
-                            return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, db.result_err
+                            return tStart_func, tFINISH, period_avg_time, \
+                                datetime.utcnow() - tStart_func, db.result_err
                     else:
                         info(f'Отсутствуют данные за период "{time_start} - {time_finish}."', start_dir)
                         break
