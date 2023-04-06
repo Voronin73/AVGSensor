@@ -45,19 +45,26 @@ table_measurand_processing = 'measurand_processing'
 table_measurand_processing_statistic = 'measurand_processing_interval'
 
 """Permission"""
-permission = f"ALTER TABLE {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}" \
+permission = f"ALTER TABLE {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
              f" OWNER TO meteocube_master; " \
-             f"GRANT ALL ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}" \
+             f"GRANT ALL ON TABLE  {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
              f" TO postgres; " \
-             f"GRANT ALL ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data} " \
-             f"TO meteocube_master; " \
-             f"REVOKE ALL ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}" \
+             f"GRANT ALL ON TABLE  {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
+             f" TO meteocube_master; " \
+             f"REVOKE ALL ON TABLE  {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
              f" FROM meteocube_level1; " \
-             f"GRANT SELECT, INSERT, UPDATE ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}"\
-             f" TO meteocube_level1; " \
-             f"REVOKE ALL ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}" \
+             f"GRANT SELECT, INSERT, UPDATE ON TABLE  {scheme_data}." \
+             f"table_section_out_data_table_date_sections"\
+             f" TO meteocube_level1;" \
+             f" REVOKE ALL ON TABLE  {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
              f" FROM meteocube_level2; " \
-             f"GRANT SELECT ON TABLE  {scheme_data}.{table_out_data_1}_{table_section_minute_out_data}" \
+             f"GRANT SELECT ON TABLE  {scheme_data}.table_section_out_data_" \
+             f"table_date_sections" \
              f" TO meteocube_level2;"
 
 

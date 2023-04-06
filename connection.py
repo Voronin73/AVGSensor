@@ -1,5 +1,5 @@
 from time import sleep
-
+from re import findall
 import psycopg2
 from psycopg2.extensions import QueryCanceledError
 from log_files import info
@@ -30,6 +30,8 @@ class ConnectionManager:
         self.__request = "SELECT {parameter} FROM {tabel}{condition}{group}{group_having}{order};"
 
         self.__update = "UPDATE {table} SET {values} {conditions};"
+
+        self.__delete = 'DELETE FROM {table} WHERE {conditions};'
 
         self.__connection = None
         self.__cursor = None
@@ -130,6 +132,7 @@ class ConnectionManager:
                 self.__connect()
 
     def inserts(self, scheme_data, section, parameter, values, description=None):
+        a = len(values.split('),'))
         n = 0
         while True:
             table_partition = f'{scheme_data}'
@@ -152,16 +155,41 @@ class ConnectionManager:
             except (Exception, psycopg2.Error) as error:
                 if 'повторяющееся значение ключа нарушает ограничение уникальности' in str(error):
                     self.__connection.commit()
-                    info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
+                    tmp = ''
+                    tmp = findall(r'\(.*\)=\(.*\)', str(error))
+                    if tmp:
+                        for z in tmp:
+                            err_condition = z.split('=')
+                            delete_conditions = ''
+                            if len(err_condition) != 2:
+                                info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
+                                break
+                            for k, m in zip(err_condition[0][1:-1].split(','), err_condition[1][1:-1].split(',')):
+                                tmp = findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', m)
+                                if len(tmp) == 1:
+                                    m = f"'{tmp[0]}'"
+                                if delete_conditions:
+
+                                    delete_conditions += f' and {k} = {m}'
+                                else:
+                                    delete_conditions += f'{k} = {m}'
+                            if delete_conditions:
+                                # info(f'Повторяющееся значение ключей, удаляем  сторку по условию: '
+                                #      f'"{delete_conditions}".', start_dir)
+                                self.delete(table_partition, delete_conditions)
+                            else:
+                                info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
+                                break
+
+
+                self.__connection.commit()
+
+                if n == a:
+                    self.result_err = f'PostgreSQL error: {error}.'
+                    self.result = f"Ошибка при работе с PostgreSQL: {error}"
                     break
                 n += 1
-                self.__connection.commit()
-                self.result_err = f'PostgreSQL error: {error}.'
-                self.result = f"Ошибка при работе с PostgreSQL: {error}"
-                info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
-                if n == 5:
-                    break
-                sleep(1/2)
+                sleep(0.05)
             except QueryCanceledError as error:
                 self.disconnect()
                 self.result_err = 'connection timeout'
@@ -218,6 +246,28 @@ class ConnectionManager:
                 self.result = self.__connection.commit()
                 self.result_err = 'ok'
                 info(f'Обновлены в таблице {table}, данные "{values}", по условию: "{conditions[6:]}".', start_dir)
+                break
+            except (Exception, psycopg2.Error) as error:
+                self.__connection.commit()
+                self.result_err = f'PostgreSQL error: {error}.'
+                self.result = f"Ошибка при работе с PostgreSQL: {error}"
+                info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
+
+            except QueryCanceledError as error:
+                self.disconnect()
+                self.result_err = 'connection timeout'
+                info(f"Ошибка при работе с PostgreSQL: {error}", start_dir)
+                sleep(1)
+                self.__connect()
+
+    def delete(self, table, conditions):
+        while True:
+            delete = self.__delete.format(table=table, conditions=conditions)
+            try:
+                self.__cursor.execute(delete)
+                self.result = self.__connection.commit()
+                self.result_err = 'ok'
+                info(f'Удалены данные в таблице {table}, по условию: "{conditions}".', start_dir)
                 break
             except (Exception, psycopg2.Error) as error:
                 self.__connection.commit()

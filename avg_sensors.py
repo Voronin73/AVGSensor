@@ -15,11 +15,11 @@ if __name__ == '__main__':
 
     # Раскоментировать и ввести необходимые параметры для ручного ввода
     #
-    start_time = '2023-02-01 00:00'     # Формат 'YY-MM-DD HH:mm'
-    finish_time = '2023-02-05 00:00'    # Формат 'YY-MM-DD HH:mm'
-    avg_time = '1_hour'
+    start_time = '2023-01-01 00:00'     # Формат 'YY-MM-DD HH:mm'
+    finish_time = '2023-04-01 00:00'    # Формат 'YY-MM-DD HH:mm'
+    # avg_time = '1_hour'
     # source_id = [14]
-    # measurand_id = [52]
+    measurand_id = [52, 181]
     # no_source_id = [1,2,3]
     # no_measurand_id = [52, 181]
     # sql_table = 1

@@ -1,7 +1,7 @@
 from settings import *
-from constants import start_dir
-from log_files import info
 from exel_files import add_exel_files
+from constants import start_dir
+from log_files import info,remove
 from connection import ConnectionManager
 from functions import check_time, conditions, values_out, get_avg_direction, get_avg_direction_vector,\
     auto_period_avg, create_info
@@ -166,7 +166,6 @@ def avg(
                 db.disconnect()
                 return
 
-
             for times in period_times:
                 n = 0
                 while True:
@@ -187,10 +186,11 @@ def avg(
                         condition = request_condition_sensors.format(
                             TIME_BEGIN=time_start, TIME_END=time_finish, AND="", MEASURAND=""
                         )
-                    db.requests(parameter=request_parameter, tabel=f'{scheme_data}.{table_in_date}', condition=condition,
+                    db.requests(parameter=request_parameter, tabel=f'{scheme_data}.{table_in_date}',
+                                condition=condition,
                                 group=request_group, group_having=request_group_having, x=col_string)
-
                     wind_data = {}
+
                     if db.result:
 
                         for x in db.result:
@@ -293,15 +293,14 @@ def avg(
                                         time_interval=time_interval_id, time_obs=time_obs, value_data=x[5])
 
                         db.result = None
-                        break
+
                     elif db.result_err == 'connection timeout':
                         n += 1
                         if n > 11:
                             db.disconnect()
-                            return tStart_func, tFINISH, period_avg_time, \
-                                datetime.utcnow() - tStart_func, db.result_err
+                            return tStart_func, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, db.result_err
                     else:
-                        info(f'Отсутствуют данные за период "{time_start} - {time_finish}."', start_dir)
+                        info(f'Отсутствуют данные за период "{time_start} - {time_finish}"', start_dir=start_dir)
                         break
 
                     db.result = None
@@ -338,8 +337,7 @@ def avg(
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[1]],
-                                            method_processing=
-                                            method_processing[mesurand_label_method_processing_avg],
+                                            method_processing=method_processing[mesurand_label_method_processing_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
                                     if method_processing[mesurand_label_method_processing_vec_avg] in \
@@ -357,24 +355,21 @@ def avg(
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[0]],
-                                            method_processing=
-                                            method_processing[mesurand_label_method_processing_vec_avg],
+                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_speed)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
                                             measurand_id=wind_measurand_id_list[z[1]],
-                                            method_processing=
-                                            method_processing[mesurand_label_method_processing_vec_avg],
+                                            method_processing=method_processing[mesurand_label_method_processing_vec_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
 
                                     if method_processing[mesurand_label_method_processing_max] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(max(
-                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_max]]
-                                        ), znk)
+                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_max]]),
+                                                           znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -385,10 +380,9 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_min] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(min(
-                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_min]]
-                                        ), znk)
+                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_min]]),
+                                                           znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -416,10 +410,9 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_max] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(max(
-                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_max]]
-                                        ),  znk)
+                                        wind_speed = round(max(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_max]]),
+                                                           znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -430,10 +423,9 @@ def avg(
                                     if method_processing[mesurand_label_method_processing_min] in \
                                             wind_data[x][k][wind_measurand_id_list[z[0]]].keys():
 
-                                        wind_speed = round(min(
-                                            wind_data[x][k][wind_measurand_id_list[z[0]]]
-                                            [method_processing[mesurand_label_method_processing_min]]
-                                        ),  znk)
+                                        wind_speed = round(min(wind_data[x][k][wind_measurand_id_list[z[0]]]
+                                                               [method_processing[mesurand_label_method_processing_min]]),
+                                                           znk)
 
                                         values, values_exel = values_out(
                                             values=values, values_exel=values_exel, source_id=k,
@@ -456,14 +448,17 @@ def avg(
                                             measurand_id=wind_measurand_id_list[z[1]],
                                             method_processing=method_processing[mesurand_label_method_processing_avg],
                                             time_interval=time_interval_id, time_obs=x, value_data=wind_direction)
-
+                    break
                 if values:
                     if f'{scheme_data}.{table_out_data}_{table_section_date}' not in table_exist:
 
                         db.create_tables_partition(scheme_data, [table_out_data, table_section_date],
                                                    condition=f"('{section_start_condition}') to "
-                                                             f"('{section_end_condition} ')",
-                                                   comment=f'Данные за ... дату {section_start_condition}.')
+                                                             f"('{section_end_condition}')",
+                                                   comment=f'Данные за ... дату {section_start_condition}.',
+                                                   permissions=permission.replace('table_date_sections',
+                                                                                  table_section_date).
+                                                   replace('table_section_out_data', table_out_data))
 
                         if db.result != 'error':
                             if len(table_exist) >= 10:
@@ -476,9 +471,8 @@ def avg(
                 # if values_exel:
                 #     add_exel_files(values_exel, avg_time, time_start=tStart_func, time_finish=tFinish)
                 #
-
-
         db.disconnect()
+        remove(start_dir, 30)
         return tSTART, tFINISH, period_avg_time, datetime.utcnow() - tStart_func, None
     except KeyboardInterrupt:
         db.disconnect()
