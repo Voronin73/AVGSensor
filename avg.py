@@ -200,7 +200,7 @@ def avg(
                             if len(x) == 11:
                                 k = x[10]
                             # Количество данных используемое в обработке пишем в запрос
-                            if x[9]:
+                            if type(x[9]) == int:
                                 if avg_time == '1_minute' or \
                                         k == method_processing[mesurand_label_method_processing_count]:
                                     values, values_exel = values_out(
@@ -208,7 +208,7 @@ def avg(
                                         method_processing=method_processing[mesurand_label_method_processing_count],
                                         time_interval=time_interval_id, time_obs=time_obs, value_data=x[9])
 
-                            if x[6]:
+                            if type(x[6]) == float:
                                 values, values_exel = values_out(
                                     values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
                                     method_processing=method_processing[mesurand_label_method_processing_median],
@@ -255,7 +255,7 @@ def avg(
                                             else:
                                                 wind_data = {time_obs: {x[1]: {x[2]: {x[10]: x[8]}}}}
 
-                            if x[7][0]:
+                            if type(x[7][0]) == str:
                                 # Если текст то обрабатываем и пишем в запрос
                                 val = ''
                                 for y in x[7]:
@@ -270,21 +270,21 @@ def avg(
                                     values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
                                     method_processing=method_processing[mesurand_label_method_processing_set],
                                     time_interval=time_interval_id, time_obs=time_obs, value_data=val)
-                            if x[3]:
+                            if type(x[3]) == float:
                                 if avg_time == '1_minute' or \
                                         k == method_processing[mesurand_label_method_processing_min]:
                                     values, values_exel = values_out(
                                         values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
                                         method_processing=method_processing[mesurand_label_method_processing_min],
                                         time_interval=time_interval_id, time_obs=time_obs, value_data=x[3])
-                            if x[4]:
+                            if type(x[4]) == float:
                                 if avg_time == '1_minute' or \
                                         k == method_processing[mesurand_label_method_processing_max]:
                                     values, values_exel = values_out(
                                         values=values, values_exel=values_exel, source_id=x[1], measurand_id=x[2],
                                         method_processing=method_processing[mesurand_label_method_processing_max],
                                         time_interval=time_interval_id, time_obs=time_obs, value_data=x[4])
-                            if x[5]:
+                            if type(x[5]) == float:
                                 if avg_time == '1_minute' or \
                                         k == method_processing[mesurand_label_method_processing_avg]:
                                     values, values_exel = values_out(
@@ -303,7 +303,7 @@ def avg(
                         info(f'Отсутствуют данные за период "{time_start} - {time_finish}"', start_dir=start_dir)
                         break
 
-                    db.result = None
+                    # db.result = None
                     # Обработка данных ветра
                     for x in wind_data.keys():
                         for k in wind_data[x].keys():
